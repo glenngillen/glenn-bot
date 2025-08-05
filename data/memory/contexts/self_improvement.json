@@ -1,0 +1,17 @@
+{
+  "id": "self_improvement",
+  "name": "Self Improvement",
+  "description": "Personal development, learning, skill building",
+  "context_type": "self_improvement",
+  "goals": [
+    "Continuous learning",
+    "Skill development",
+    "Personal growth"
+  ],
+  "key_people": [],
+  "current_focus": "Identifying areas for growth",
+  "status": "active",
+  "created_at": "2025-08-05T12:07:20.009864",
+  "last_used": "2025-08-05T12:15:40.536869",
+  "metadata": {}
+}

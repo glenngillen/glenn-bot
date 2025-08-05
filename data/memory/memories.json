@@ -1,0 +1,298 @@
+{
+  "mem_0_20250805_121940": {
+    "id": "mem_0_20250805_121940",
+    "memory_type": "personal",
+    "content": "User wants to explore their personal principles using Design Thinking's 'Empathize' step.",
+    "context": "general",
+    "importance": 8,
+    "created_at": "2025-08-05T12:19:40.665688",
+    "last_accessed": "2025-08-05T12:34:26.634721",
+    "access_count": 6,
+    "tags": [
+      "principles",
+      "personal",
+      "design thinking"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_1_20250805_121940": {
+    "id": "mem_1_20250805_121940",
+    "memory_type": "insight",
+    "content": "Understanding personal values and principles requires an empathetic approach that understands thoughts, feelings, and motivations.",
+    "context": "general",
+    "importance": 9,
+    "created_at": "2025-08-05T12:19:40.920952",
+    "last_accessed": "2025-08-05T12:19:40.920952",
+    "access_count": 1,
+    "tags": [
+      "personal growth",
+      "insight",
+      "empathy"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_2_20250805_122440": {
+    "id": "mem_2_20250805_122440",
+    "memory_type": "insight",
+    "content": "Personal principles are a crucial aspect of one's identity, and understanding them can help align with values.",
+    "context": "general",
+    "importance": 9,
+    "created_at": "2025-08-05T12:24:40.768724",
+    "last_accessed": "2025-08-05T12:24:40.768724",
+    "access_count": 1,
+    "tags": [
+      "identity",
+      "values"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_3_20250805_122441": {
+    "id": "mem_3_20250805_122441",
+    "memory_type": "insight",
+    "content": "Design Thinking's Empathize and Define steps can be applied to discover personal principles.",
+    "context": "general",
+    "importance": 8,
+    "created_at": "2025-08-05T12:24:41.099911",
+    "last_accessed": "2025-08-05T12:24:41.099911",
+    "access_count": 1,
+    "tags": [
+      "design thinking",
+      "empathy"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_4_20250805_122441": {
+    "id": "mem_4_20250805_122441",
+    "memory_type": "goal",
+    "content": "To uncover the user's personal principles and align with their values.",
+    "context": "general",
+    "importance": 6,
+    "created_at": "2025-08-05T12:24:41.141838",
+    "last_accessed": "2025-08-05T12:24:41.141838",
+    "access_count": 1,
+    "tags": [
+      "goals",
+      "values"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_5_20250805_122441": {
+    "id": "mem_5_20250805_122441",
+    "memory_type": "decision",
+    "content": "The user is ready to explore their personal principles further.",
+    "context": "general",
+    "importance": 5,
+    "created_at": "2025-08-05T12:24:41.173223",
+    "last_accessed": "2025-08-05T12:24:41.173223",
+    "access_count": 1,
+    "tags": [
+      "commitment",
+      "decisions"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_6_20250805_122858": {
+    "id": "mem_6_20250805_122858",
+    "memory_type": "insight",
+    "content": "The Design Thinking framework will be used to explore personal principles.",
+    "context": "general",
+    "importance": 8,
+    "created_at": "2025-08-05T12:28:58.719974",
+    "last_accessed": "2025-08-05T12:34:26.634718",
+    "access_count": 4,
+    "tags": [
+      "Design Thinking",
+      "personal principles"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_7_20250805_122859": {
+    "id": "mem_7_20250805_122859",
+    "memory_type": "goal",
+    "content": "To understand user's values and beliefs that guide decisions and actions.",
+    "context": "general",
+    "importance": 9,
+    "created_at": "2025-08-05T12:28:59.071101",
+    "last_accessed": "2025-08-05T12:34:26.634707",
+    "access_count": 4,
+    "tags": [
+      "goal",
+      "beliefs",
+      "values"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_8_20250805_122859": {
+    "id": "mem_8_20250805_122859",
+    "memory_type": "personal",
+    "content": "User is motivated by life experiences, stories, and quotes.",
+    "context": "general",
+    "importance": 7,
+    "created_at": "2025-08-05T12:28:59.128748",
+    "last_accessed": "2025-08-05T12:34:26.634722",
+    "access_count": 4,
+    "tags": [
+      "personal",
+      "motivation"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_9_20250805_123345": {
+    "id": "mem_9_20250805_123345",
+    "memory_type": "personal",
+    "content": "User's personal principles include: Appreciate the care others put into their work, Be curious, Believe in magic, Considered but contestable, Be present, and Do more with less.",
+    "context": "general",
+    "importance": 9,
+    "created_at": "2025-08-05T12:33:45.208455",
+    "last_accessed": "2025-08-05T12:34:26.634717",
+    "access_count": 2,
+    "tags": [
+      "personal principles",
+      "values"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_10_20250805_123345": {
+    "id": "mem_10_20250805_123345",
+    "memory_type": "insight",
+    "content": "Personal principles guide interactions, decision-making processes, and daily life.",
+    "context": "general",
+    "importance": 8,
+    "created_at": "2025-08-05T12:33:45.553400",
+    "last_accessed": "2025-08-05T12:34:26.634720",
+    "access_count": 2,
+    "tags": [
+      "decision making",
+      "guiding principles"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_11_20250805_123531": {
+    "id": "mem_11_20250805_123531",
+    "memory_type": "personal",
+    "content": "User has personal principles: Appreciate care others put into work, Be curious, Believe in magic, Considered but contestable, Be present, Do more with less",
+    "context": "general",
+    "importance": 9,
+    "created_at": "2025-08-05T12:35:31.877020",
+    "last_accessed": "2025-08-05T12:35:31.877020",
+    "access_count": 1,
+    "tags": [
+      "principles",
+      "personal"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_12_20250805_123532": {
+    "id": "mem_12_20250805_123532",
+    "memory_type": "personal",
+    "content": "User values appreciation, curiosity, imagination, consideration, presence, and simplicity in their interactions and decision-making processes",
+    "context": "general",
+    "importance": 8,
+    "created_at": "2025-08-05T12:35:32.275448",
+    "last_accessed": "2025-08-05T12:35:32.275448",
+    "access_count": 1,
+    "tags": [
+      "priorities",
+      "values"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_13_20250805_123532": {
+    "id": "mem_13_20250805_123532",
+    "memory_type": "project",
+    "content": "LinkedIn Growth Playbook framework recommended for growing a community on LinkedIn",
+    "context": "general",
+    "importance": 6,
+    "created_at": "2025-08-05T12:35:32.314214",
+    "last_accessed": "2025-08-05T12:35:32.314214",
+    "access_count": 1,
+    "tags": [
+      "growth",
+      "marketing",
+      "LinkedIn"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_14_20250805_123532": {
+    "id": "mem_14_20250805_123532",
+    "memory_type": "project",
+    "content": "Strategies for growing a community on LinkedIn: Attract audience with organic-first strategy, Focus on valuable and relatable content, Employee activation is key to community-building and engagement",
+    "context": "general",
+    "importance": 7,
+    "created_at": "2025-08-05T12:35:32.342134",
+    "last_accessed": "2025-08-05T12:35:32.342134",
+    "access_count": 1,
+    "tags": [
+      "growth",
+      "marketing",
+      "community"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_15_20250805_123532": {
+    "id": "mem_15_20250805_123532",
+    "memory_type": "insight",
+    "content": "Appreciation of care others put into work is essential in interactions",
+    "context": "general",
+    "importance": 8,
+    "created_at": "2025-08-05T12:35:32.373311",
+    "last_accessed": "2025-08-05T12:35:32.373311",
+    "access_count": 1,
+    "tags": [
+      "appreciation",
+      "insight",
+      "care"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_16_20250805_143958": {
+    "id": "mem_16_20250805_143958",
+    "memory_type": "insight",
+    "content": "Added inspiring quote by your: \"Chase...\" - desired lifestyle, not your desired title. People are blinded by status and labels. Once you release the need for a specific title, there is almost always an easier path to living your preferred lifestyle.\" \"James Clear",
+    "context": "general",
+    "importance": 8,
+    "created_at": "2025-08-05T14:39:58.236433",
+    "last_accessed": "2025-08-05T14:39:58.236433",
+    "access_count": 1,
+    "tags": [
+      "goal setting",
+      "lifestyle design",
+      "motivation"
+    ],
+    "projects": [],
+    "metadata": {}
+  },
+  "mem_17_20250805_144023": {
+    "id": "mem_17_20250805_144023",
+    "memory_type": "insight",
+    "content": "Added inspiring quote by frustrations: \"Many...\" - are the result of unspoken expectations. Before you get too annoyed, make sure you are clearly expressing your thoughts.\" \"Jame Clear",
+    "context": "general",
+    "importance": 8,
+    "created_at": "2025-08-05T14:40:23.947552",
+    "last_accessed": "2025-08-05T14:40:23.947552",
+    "access_count": 1,
+    "tags": [
+      "self-awareness",
+      "time management",
+      "communication"
+    ],
+    "projects": [],
+    "metadata": {}
+  }
+}

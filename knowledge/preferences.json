@@ -1,0 +1,17 @@
+{
+  "communication": {
+    "style": "Direct and concise, but friendly",
+    "detail_level": "Start with overview, dive into details when needed",
+    "examples": "Use concrete examples to illustrate abstract concepts"
+  },
+  "work": {
+    "planning": "Break large tasks into smaller, manageable pieces",
+    "documentation": "Document decisions and reasoning for future reference",
+    "tools": "Prefer open-source and privacy-respecting tools"
+  },
+  "learning": {
+    "approach": "Hands-on experimentation combined with theoretical understanding",
+    "pace": "Steady progress over rushed completion",
+    "resources": "Mix of official docs, tutorials, and community resources"
+  }
+}

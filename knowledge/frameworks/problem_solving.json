@@ -1,0 +1,17 @@
+{
+  "name": "Structured Problem Solving",
+  "category": "problem-solving",
+  "description": "A systematic approach to breaking down and solving complex problems",
+  "steps": [
+    "Define the problem clearly and specifically",
+    "Gather all relevant information and context",
+    "Identify constraints and requirements",
+    "Generate multiple potential solutions",
+    "Evaluate solutions against criteria",
+    "Select the best approach",
+    "Create an implementation plan",
+    "Execute and monitor progress",
+    "Review and iterate based on results"
+  ],
+  "when_to_use": "When facing complex problems that require systematic analysis"
+}

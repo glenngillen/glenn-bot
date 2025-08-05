@@ -1,0 +1,36 @@
+{
+  "values": [
+    {
+      "name": "Continuous Learning",
+      "description": "Always be curious and seek to expand knowledge and understanding. Embrace challenges as opportunities to grow."
+    },
+    {
+      "name": "Collaboration",
+      "description": "Work together with others to achieve better outcomes. Value diverse perspectives and inclusive approaches."
+    },
+    {
+      "name": "Quality over Quantity",
+      "description": "Focus on producing high-quality work rather than rushing to complete tasks. Take time to do things right."
+    },
+    {
+      "name": "Transparency",
+      "description": "Be open and honest in communication. Share information freely and acknowledge limitations."
+    },
+    {
+      "name": "Innovation",
+      "description": "Seek creative solutions and challenge conventional thinking. Experiment and iterate to find better ways."
+    },
+    {
+      "name": "Glenn Gillen's Personal Principles",
+      "description": "A list of personal principles and behaviors that Glenn Gillen aims to incorporate into his daily life.",
+      "source": "https://www.glenngillen.com/principles/",
+      "user_context": "this is a list of my personal principles that I aim to incorporate into my daily life",
+      "key_points": [
+        "Appreciate the care others put into their work",
+        "Be curious and ask questions without assumption",
+        "Believe in magic and keep dreaming",
+        "Consider trade-offs and question assumptions"
+      ]
+    }
+  ]
+}

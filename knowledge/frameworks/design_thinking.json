@@ -1,0 +1,13 @@
+{
+  "name": "Design Thinking",
+  "category": "innovation",
+  "description": "Human-centered approach to innovation that integrates needs, possibilities, and requirements",
+  "steps": [
+    "Empathize - Understand the user and their needs",
+    "Define - Clearly articulate the problem to solve",
+    "Ideate - Generate creative solutions",
+    "Prototype - Build quick, low-fidelity versions",
+    "Test - Get feedback and iterate"
+  ],
+  "when_to_use": "When creating new products, services, or solving user-centered problems"
+}

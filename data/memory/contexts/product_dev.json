@@ -1,0 +1,17 @@
+{
+  "id": "product_dev",
+  "name": "Product Development",
+  "description": "Working on product ideas, development, and improvement",
+  "context_type": "product_development",
+  "goals": [
+    "Build innovative products",
+    "Solve user problems",
+    "Generate value"
+  ],
+  "key_people": [],
+  "current_focus": "Ideation phase",
+  "status": "active",
+  "created_at": "2025-08-05T12:07:20.009864",
+  "last_used": "2025-08-05T12:07:20.009864",
+  "metadata": {}
+}
