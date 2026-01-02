@@ -73,7 +73,7 @@ Once running, you can:
 - **ChromaDB**: Vector database for knowledge storage
 - **Rich**: Terminal UI framework
 - **LangGraph**: Agent orchestration
-- **LlamaIndex**: Document processing and retrieval
+- **BeautifulSoup4**: Web content extraction
 
 ## License
 
