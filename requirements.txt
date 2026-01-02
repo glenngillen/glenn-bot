@@ -25,3 +25,8 @@ PyYAML
 requests
 beautifulsoup4
 markdownify
+
+# Testing
+pytest
+pytest-cov
+pytest-mock

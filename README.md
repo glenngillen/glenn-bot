@@ -67,6 +67,51 @@ Once running, you can:
   - `/new` - Start a new conversation
   - `/exit` - Exit the application
 
+## Testing
+
+The project includes comprehensive unit tests for all core modules.
+
+### Running Tests Locally
+
+1. Install test dependencies (included in requirements.txt):
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Run all tests:
+   ```bash
+   pytest
+   ```
+
+3. Run tests with coverage:
+   ```bash
+   pytest --cov=src --cov-report=term-missing
+   ```
+
+4. Run a specific test file:
+   ```bash
+   pytest tests/test_memory_system.py -v
+   ```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py           # Shared fixtures
+├── test_memory_system.py # Memory and context tests
+├── test_conversation.py  # Conversation manager tests
+├── test_knowledge_base.py# Knowledge base tests
+└── test_agents.py        # Agent and orchestrator tests
+```
+
+### CI/CD
+
+Tests run automatically on:
+- Every push to `main` branch
+- Every pull request targeting `main`
+
+The GitHub Actions workflow tests against Python 3.10, 3.11, and 3.12.
+
 ## Architecture
 
 - **Ollama**: Local LLM runtime
