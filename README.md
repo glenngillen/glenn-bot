@@ -75,6 +75,42 @@ Once running, you can:
 - **LangGraph**: Agent orchestration
 - **BeautifulSoup4**: Web content extraction
 
+## Testing
+
+The project includes a comprehensive test suite using pytest.
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install -r requirements.txt
+
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=src --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_memory_system.py
+
+# Run tests matching a pattern
+pytest -k "test_memory"
+```
+
+### Test Coverage
+
+Tests cover the following modules:
+- `src/memory_system.py` - Memory, Context, and MemorySystem classes
+- `src/conversation.py` - Message and ConversationManager classes
+- `src/knowledge_base.py` - KnowledgeBase operations
+- `src/agents.py` - All agent classes and AgentOrchestrator
+- `src/reasoning_agents.py` - Planning, Reasoning, and Reviewer agents
+
+### CI/CD
+
+Tests run automatically on push and pull request via GitHub Actions across Python 3.10, 3.11, and 3.12.
+
 ## License
 
 MIT
