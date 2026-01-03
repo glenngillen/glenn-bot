@@ -11,6 +11,7 @@ from src.agents import AgentOrchestrator
 from src.document_ingestion import DocumentIngestionTool
 from src.memory_system import MemorySystem, MemoryType
 from src.quotes_system import QuotesSystem
+from src.feedback_system import FeedbackManager, FeedbackType
 
 # Configure logging
 logging.basicConfig(
@@ -37,6 +38,7 @@ class GlennBot:
         self.quotes_system = QuotesSystem(self.memory_system, self.knowledge_base, self.ollama_client)
         self.orchestrator = AgentOrchestrator(self.knowledge_base, self.ollama_client, self.quotes_system)
         self.ingestion_tool = DocumentIngestionTool(self.knowledge_base, self.ollama_client)
+        self.feedback_manager = FeedbackManager()
         
     def initialize(self):
         """Initialize the bot and load knowledge base."""
@@ -197,7 +199,27 @@ class GlennBot:
             
         elif command == "/quotes-stats":
             self._show_quotes_stats()
-        
+
+        # Feedback commands
+        elif command == "/rate":
+            self._rate_last_response()
+
+        elif command.startswith("/rate "):
+            rating_str = command[6:].strip()
+            self._rate_last_response(rating_str)
+
+        elif command == "/feedback-stats":
+            self._show_feedback_stats()
+
+        elif command == "/best-responses":
+            self._show_best_responses()
+
+        elif command == "/worst-responses":
+            self._show_worst_responses()
+
+        elif command == "/feedback-insights":
+            self._show_feedback_insights()
+
         else:
             self.ui.display_error(f"Unknown command: {command}")
             
@@ -814,7 +836,296 @@ class GlennBot:
         except Exception as e:
             logger.error(f"Error showing quotes stats: {e}")
             self.ui.display_error(f"Failed to show quotes stats: {e}")
-            
+
+    def _rate_last_response(self, rating_str: Optional[str] = None):
+        """Rate the last assistant response."""
+        try:
+            # Get the last assistant message
+            msg_pair = self.conversation.get_message_pair_for_feedback()
+
+            if not msg_pair:
+                self.ui.console.print("[yellow]No response to rate yet[/yellow]")
+                return
+
+            # Show what we're rating
+            response_preview = msg_pair["assistant_content"][:200]
+            if len(msg_pair["assistant_content"]) > 200:
+                response_preview += "..."
+
+            self.ui.console.print(f"[cyan]Rating response:[/cyan]")
+            self.ui.console.print(f"[dim]{response_preview}[/dim]")
+            self.ui.console.print()
+
+            # Parse rating if provided
+            if rating_str:
+                if rating_str in ["+", "up", "👍", "good"]:
+                    feedback = self.feedback_manager.add_thumbs_up(
+                        conversation_id=self.conversation.conversation_id,
+                        message_index=msg_pair["assistant_index"],
+                        user_query=msg_pair["user_content"],
+                        assistant_response=msg_pair["assistant_content"]
+                    )
+                    self.ui.console.print("[green]✓ Marked as 👍 (thumbs up)[/green]")
+                    return
+
+                elif rating_str in ["-", "down", "👎", "bad"]:
+                    # Ask for optional feedback
+                    text_feedback = input("What could be improved? (press Enter to skip): ").strip()
+                    feedback = self.feedback_manager.add_thumbs_down(
+                        conversation_id=self.conversation.conversation_id,
+                        message_index=msg_pair["assistant_index"],
+                        text_feedback=text_feedback if text_feedback else None,
+                        user_query=msg_pair["user_content"],
+                        assistant_response=msg_pair["assistant_content"]
+                    )
+                    self.ui.console.print("[yellow]✓ Marked as 👎 (thumbs down)[/yellow]")
+                    return
+
+                elif rating_str.isdigit() and 1 <= int(rating_str) <= 5:
+                    rating = int(rating_str)
+                    text_feedback = None
+                    if rating <= 2:
+                        text_feedback = input("What could be improved? (press Enter to skip): ").strip()
+
+                    feedback = self.feedback_manager.add_rating(
+                        conversation_id=self.conversation.conversation_id,
+                        message_index=msg_pair["assistant_index"],
+                        rating=rating,
+                        text_feedback=text_feedback if text_feedback else None,
+                        user_query=msg_pair["user_content"],
+                        assistant_response=msg_pair["assistant_content"]
+                    )
+                    stars = "⭐" * rating + "☆" * (5 - rating)
+                    self.ui.console.print(f"[green]✓ Rated {stars} ({rating}/5)[/green]")
+                    return
+
+            # Interactive rating mode
+            self.ui.console.print("[yellow]How would you rate this response?[/yellow]")
+            self.ui.console.print("  1. 👍 Thumbs up (good response)")
+            self.ui.console.print("  2. 👎 Thumbs down (needs improvement)")
+            self.ui.console.print("  3. Rate 1-5 stars")
+            self.ui.console.print("  4. Cancel")
+
+            try:
+                choice = input("Select option (1-4): ").strip()
+
+                if choice == "1":
+                    feedback = self.feedback_manager.add_thumbs_up(
+                        conversation_id=self.conversation.conversation_id,
+                        message_index=msg_pair["assistant_index"],
+                        user_query=msg_pair["user_content"],
+                        assistant_response=msg_pair["assistant_content"]
+                    )
+                    self.ui.console.print("[green]✓ Marked as 👍 (thumbs up)[/green]")
+
+                elif choice == "2":
+                    text_feedback = input("What could be improved? (press Enter to skip): ").strip()
+                    feedback = self.feedback_manager.add_thumbs_down(
+                        conversation_id=self.conversation.conversation_id,
+                        message_index=msg_pair["assistant_index"],
+                        text_feedback=text_feedback if text_feedback else None,
+                        user_query=msg_pair["user_content"],
+                        assistant_response=msg_pair["assistant_content"]
+                    )
+                    self.ui.console.print("[yellow]✓ Marked as 👎 (thumbs down)[/yellow]")
+
+                elif choice == "3":
+                    rating_input = input("Enter rating (1-5): ").strip()
+                    if rating_input.isdigit() and 1 <= int(rating_input) <= 5:
+                        rating = int(rating_input)
+                        text_feedback = None
+                        if rating <= 2:
+                            text_feedback = input("What could be improved? (press Enter to skip): ").strip()
+
+                        feedback = self.feedback_manager.add_rating(
+                            conversation_id=self.conversation.conversation_id,
+                            message_index=msg_pair["assistant_index"],
+                            rating=rating,
+                            text_feedback=text_feedback if text_feedback else None,
+                            user_query=msg_pair["user_content"],
+                            assistant_response=msg_pair["assistant_content"]
+                        )
+                        stars = "⭐" * rating + "☆" * (5 - rating)
+                        self.ui.console.print(f"[green]✓ Rated {stars} ({rating}/5)[/green]")
+                    else:
+                        self.ui.display_error("Invalid rating. Please enter 1-5")
+
+                else:
+                    self.ui.console.print("[dim]Cancelled[/dim]")
+
+            except (KeyboardInterrupt, EOFError):
+                self.ui.console.print("\n[dim]Cancelled[/dim]")
+
+        except Exception as e:
+            logger.error(f"Error rating response: {e}")
+            self.ui.display_error(f"Failed to rate response: {e}")
+
+    def _show_feedback_stats(self):
+        """Show feedback statistics."""
+        try:
+            stats = self.feedback_manager.get_statistics()
+
+            if stats["total_feedback"] == 0:
+                self.ui.console.print("[yellow]No feedback recorded yet[/yellow]")
+                self.ui.console.print("[dim]Use /rate to provide feedback on responses[/dim]")
+                return
+
+            from rich.table import Table
+            table = Table(title="Response Feedback Statistics")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+
+            table.add_row("Total Feedback", str(stats["total_feedback"]))
+            table.add_row("Positive Responses", f"{stats['positive_count']} ({stats['positive_rate']*100:.1f}%)")
+            table.add_row("Negative Responses", str(stats["negative_count"]))
+            table.add_row("Average Score", f"{stats['average_score']*100:.1f}%")
+            table.add_row("With Text Feedback", str(stats["feedback_with_text"]))
+
+            self.ui.console.print(table)
+
+            # Show breakdown by type
+            if stats["by_type"]:
+                self.ui.console.print("\n[cyan]By Feedback Type:[/cyan]")
+                for type_name, data in stats["by_type"].items():
+                    self.ui.console.print(f"  {type_name}: {data['count']} (avg: {data['avg_rating']:.1f})")
+
+        except Exception as e:
+            logger.error(f"Error showing feedback stats: {e}")
+            self.ui.display_error(f"Failed to show feedback stats: {e}")
+
+    def _show_best_responses(self):
+        """Show the best-rated responses."""
+        try:
+            best = self.feedback_manager.get_best_responses(limit=10)
+
+            if not best:
+                self.ui.console.print("[yellow]No positive feedback recorded yet[/yellow]")
+                return
+
+            from rich.table import Table
+            table = Table(title="Best Rated Responses")
+            table.add_column("Query", style="cyan", max_width=30)
+            table.add_column("Response", style="white", max_width=40)
+            table.add_column("Rating", style="green")
+            table.add_column("Date", style="dim")
+
+            for fb in best:
+                query = (fb.user_query or "N/A")[:60]
+                if len(fb.user_query or "") > 60:
+                    query += "..."
+
+                response = (fb.assistant_response or "N/A")[:80]
+                if len(fb.assistant_response or "") > 80:
+                    response += "..."
+
+                if fb.feedback_type == FeedbackType.RATING_1_5:
+                    rating_str = "⭐" * fb.rating
+                else:
+                    rating_str = "👍" if fb.is_positive else "👎"
+
+                table.add_row(
+                    query,
+                    response,
+                    rating_str,
+                    fb.timestamp.strftime("%Y-%m-%d")
+                )
+
+            self.ui.console.print(table)
+
+        except Exception as e:
+            logger.error(f"Error showing best responses: {e}")
+            self.ui.display_error(f"Failed to show best responses: {e}")
+
+    def _show_worst_responses(self):
+        """Show the worst-rated responses."""
+        try:
+            worst = self.feedback_manager.get_worst_responses(limit=10)
+
+            if not worst:
+                self.ui.console.print("[yellow]No negative feedback recorded yet[/yellow]")
+                return
+
+            from rich.table import Table
+            table = Table(title="Lowest Rated Responses (Improvement Opportunities)")
+            table.add_column("Query", style="cyan", max_width=30)
+            table.add_column("Response", style="white", max_width=35)
+            table.add_column("Rating", style="red")
+            table.add_column("Feedback", style="yellow", max_width=25)
+
+            for fb in worst:
+                query = (fb.user_query or "N/A")[:60]
+                if len(fb.user_query or "") > 60:
+                    query += "..."
+
+                response = (fb.assistant_response or "N/A")[:70]
+                if len(fb.assistant_response or "") > 70:
+                    response += "..."
+
+                if fb.feedback_type == FeedbackType.RATING_1_5:
+                    rating_str = "⭐" * fb.rating + "☆" * (5 - fb.rating)
+                else:
+                    rating_str = "👎"
+
+                feedback_text = (fb.text_feedback or "")[:50]
+                if len(fb.text_feedback or "") > 50:
+                    feedback_text += "..."
+
+                table.add_row(
+                    query,
+                    response,
+                    rating_str,
+                    feedback_text
+                )
+
+            self.ui.console.print(table)
+
+        except Exception as e:
+            logger.error(f"Error showing worst responses: {e}")
+            self.ui.display_error(f"Failed to show worst responses: {e}")
+
+    def _show_feedback_insights(self):
+        """Show insights from collected feedback."""
+        try:
+            insights = self.feedback_manager.get_improvement_insights()
+            stats = self.feedback_manager.get_statistics()
+
+            if stats["total_feedback"] == 0:
+                self.ui.console.print("[yellow]No feedback recorded yet[/yellow]")
+                return
+
+            self.ui.console.print("[cyan]" + "="*60 + "[/cyan]")
+            self.ui.console.print("[bold cyan]Feedback Insights[/bold cyan]")
+            self.ui.console.print("[cyan]" + "="*60 + "[/cyan]")
+
+            # Summary
+            self.ui.console.print(f"\n[green]Overall Performance:[/green]")
+            self.ui.console.print(f"  • {stats['positive_count']}/{stats['total_feedback']} responses rated positively ({stats['positive_rate']*100:.1f}%)")
+            self.ui.console.print(f"  • Average satisfaction score: {stats['average_score']*100:.1f}%")
+
+            # Improvement suggestions
+            if insights["common_issues"]:
+                self.ui.console.print(f"\n[yellow]Areas for Improvement ({len(insights['common_issues'])} feedback items):[/yellow]")
+                for i, issue in enumerate(insights["common_issues"][:5], 1):
+                    self.ui.console.print(f"  {i}. {issue}")
+
+            # Successful patterns
+            if insights["successful_patterns"]:
+                self.ui.console.print(f"\n[green]What's Working Well:[/green]")
+                for i, pattern in enumerate(insights["successful_patterns"][:5], 1):
+                    self.ui.console.print(f"  {i}. {pattern}")
+
+            # Few-shot examples available
+            examples = self.feedback_manager.get_few_shot_examples(limit=3)
+            if examples:
+                self.ui.console.print(f"\n[cyan]Top-Rated Response Examples Available:[/cyan] {len(examples)}")
+                self.ui.console.print("[dim]These can be used as few-shot examples for future responses[/dim]")
+
+            self.ui.console.print("[cyan]" + "="*60 + "[/cyan]")
+
+        except Exception as e:
+            logger.error(f"Error showing feedback insights: {e}")
+            self.ui.display_error(f"Failed to show feedback insights: {e}")
+
     def run(self):
         """Main application loop."""
         self.initialize()

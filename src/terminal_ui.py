@@ -161,6 +161,16 @@ Let's collaborate!
 - `/search-quotes <query>` - Search quotes by content, author, or tags
 - `/quotes-stats` - Show quotes collection statistics
 
+### Response Feedback
+- `/rate` - Rate the last assistant response (interactive mode)
+- `/rate +` or `/rate up` - Quick thumbs up for last response
+- `/rate -` or `/rate down` - Quick thumbs down for last response
+- `/rate <1-5>` - Rate last response on a 1-5 star scale
+- `/feedback-stats` - Show feedback statistics
+- `/best-responses` - View highest-rated responses
+- `/worst-responses` - View lowest-rated responses for improvement
+- `/feedback-insights` - Get insights from collected feedback
+
 ## Tips:
 - **Context Switching**: Use contexts to maintain separate project spaces
 - **Memory**: The system automatically remembers important information from conversations

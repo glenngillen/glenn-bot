@@ -31,9 +31,13 @@ class ConversationManager:
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
         self.current_conversation: List[Message] = []
         self.conversation_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-    def add_message(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None):
-        """Add a message to the current conversation."""
+
+    def add_message(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> int:
+        """Add a message to the current conversation.
+
+        Returns:
+            int: The index of the added message (for use with feedback system)
+        """
         message = Message(
             role=role,
             content=content,
@@ -42,6 +46,58 @@ class ConversationManager:
         )
         self.current_conversation.append(message)
         self._save_conversation()
+        return len(self.current_conversation) - 1
+
+    def get_last_assistant_message(self) -> Optional[tuple]:
+        """Get the last assistant message and its index.
+
+        Returns:
+            tuple: (index, message) of the last assistant message, or None if not found
+        """
+        for i in range(len(self.current_conversation) - 1, -1, -1):
+            if self.current_conversation[i].role == "assistant":
+                return (i, self.current_conversation[i])
+        return None
+
+    def get_last_user_message(self) -> Optional[tuple]:
+        """Get the last user message and its index.
+
+        Returns:
+            tuple: (index, message) of the last user message, or None if not found
+        """
+        for i in range(len(self.current_conversation) - 1, -1, -1):
+            if self.current_conversation[i].role == "user":
+                return (i, self.current_conversation[i])
+        return None
+
+    def get_message_pair_for_feedback(self) -> Optional[Dict[str, Any]]:
+        """Get the last user-assistant message pair for feedback.
+
+        Returns:
+            dict with 'user_index', 'user_content', 'assistant_index', 'assistant_content'
+            or None if no assistant message exists
+        """
+        assistant_result = self.get_last_assistant_message()
+        if not assistant_result:
+            return None
+
+        assistant_index, assistant_msg = assistant_result
+
+        # Find the user message before this assistant message
+        user_content = None
+        user_index = None
+        for i in range(assistant_index - 1, -1, -1):
+            if self.current_conversation[i].role == "user":
+                user_index = i
+                user_content = self.current_conversation[i].content
+                break
+
+        return {
+            "user_index": user_index,
+            "user_content": user_content,
+            "assistant_index": assistant_index,
+            "assistant_content": assistant_msg.content
+        }
         
     def get_conversation_context(self, max_messages: int = 10) -> str:
         """Get recent conversation context as a formatted string."""
