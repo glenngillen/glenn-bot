@@ -284,3 +284,150 @@ class TestConversationManager:
 
         # Should only have the current conversation (empty) or none
         assert isinstance(conversations, list)
+
+    @patch('src.conversation.settings')
+    def test_add_message_returns_index(self, mock_settings, temp_dir):
+        """Test that add_message returns the message index."""
+        mock_settings.conversation_history_dir = temp_dir / "conversations"
+
+        from src.conversation import ConversationManager
+
+        manager = ConversationManager()
+        index0 = manager.add_message("user", "First message")
+        index1 = manager.add_message("assistant", "Second message")
+        index2 = manager.add_message("user", "Third message")
+
+        assert index0 == 0
+        assert index1 == 1
+        assert index2 == 2
+
+    @patch('src.conversation.settings')
+    def test_get_last_assistant_message(self, mock_settings, temp_dir):
+        """Test getting the last assistant message."""
+        mock_settings.conversation_history_dir = temp_dir / "conversations"
+
+        from src.conversation import ConversationManager
+
+        manager = ConversationManager()
+        manager.add_message("user", "Hello")
+        manager.add_message("assistant", "Hi there!")
+        manager.add_message("user", "How are you?")
+        manager.add_message("assistant", "I'm doing well!")
+
+        result = manager.get_last_assistant_message()
+
+        assert result is not None
+        index, message = result
+        assert index == 3
+        assert message.content == "I'm doing well!"
+        assert message.role == "assistant"
+
+    @patch('src.conversation.settings')
+    def test_get_last_assistant_message_none(self, mock_settings, temp_dir):
+        """Test get_last_assistant_message when no assistant messages exist."""
+        mock_settings.conversation_history_dir = temp_dir / "conversations"
+
+        from src.conversation import ConversationManager
+
+        manager = ConversationManager()
+        manager.add_message("user", "Hello")
+        manager.add_message("user", "Anyone there?")
+
+        result = manager.get_last_assistant_message()
+
+        assert result is None
+
+    @patch('src.conversation.settings')
+    def test_get_last_user_message(self, mock_settings, temp_dir):
+        """Test getting the last user message."""
+        mock_settings.conversation_history_dir = temp_dir / "conversations"
+
+        from src.conversation import ConversationManager
+
+        manager = ConversationManager()
+        manager.add_message("user", "First question")
+        manager.add_message("assistant", "First answer")
+        manager.add_message("user", "Second question")
+
+        result = manager.get_last_user_message()
+
+        assert result is not None
+        index, message = result
+        assert index == 2
+        assert message.content == "Second question"
+        assert message.role == "user"
+
+    @patch('src.conversation.settings')
+    def test_get_last_user_message_none(self, mock_settings, temp_dir):
+        """Test get_last_user_message when no user messages exist."""
+        mock_settings.conversation_history_dir = temp_dir / "conversations"
+
+        from src.conversation import ConversationManager
+
+        manager = ConversationManager()
+        # Only system messages
+        from src.conversation import Message
+        manager.current_conversation.append(
+            Message(role="system", content="System prompt", timestamp=datetime.now())
+        )
+
+        result = manager.get_last_user_message()
+
+        assert result is None
+
+    @patch('src.conversation.settings')
+    def test_get_message_pair_for_feedback(self, mock_settings, temp_dir):
+        """Test getting user-assistant message pair for feedback."""
+        mock_settings.conversation_history_dir = temp_dir / "conversations"
+
+        from src.conversation import ConversationManager
+
+        manager = ConversationManager()
+        manager.add_message("user", "What is Python?")
+        manager.add_message("assistant", "Python is a programming language.")
+        manager.add_message("user", "Tell me more.")
+        manager.add_message("assistant", "It's widely used for web development.")
+
+        result = manager.get_message_pair_for_feedback()
+
+        assert result is not None
+        assert result["user_index"] == 2
+        assert result["user_content"] == "Tell me more."
+        assert result["assistant_index"] == 3
+        assert result["assistant_content"] == "It's widely used for web development."
+
+    @patch('src.conversation.settings')
+    def test_get_message_pair_for_feedback_no_assistant(self, mock_settings, temp_dir):
+        """Test get_message_pair_for_feedback when no assistant messages exist."""
+        mock_settings.conversation_history_dir = temp_dir / "conversations"
+
+        from src.conversation import ConversationManager
+
+        manager = ConversationManager()
+        manager.add_message("user", "Hello")
+
+        result = manager.get_message_pair_for_feedback()
+
+        assert result is None
+
+    @patch('src.conversation.settings')
+    def test_get_message_pair_for_feedback_no_preceding_user(self, mock_settings, temp_dir):
+        """Test get_message_pair_for_feedback when assistant has no preceding user message."""
+        mock_settings.conversation_history_dir = temp_dir / "conversations"
+
+        from src.conversation import ConversationManager, Message
+
+        manager = ConversationManager()
+        # Add only an assistant message
+        manager.current_conversation.append(
+            Message(role="assistant", content="Hello!", timestamp=datetime.now())
+        )
+        manager._save_conversation()
+
+        result = manager.get_message_pair_for_feedback()
+
+        assert result is not None
+        assert result["user_index"] is None
+        assert result["user_content"] is None
+        assert result["assistant_index"] == 0
+        assert result["assistant_content"] == "Hello!"
