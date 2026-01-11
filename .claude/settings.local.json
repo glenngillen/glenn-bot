@@ -2,7 +2,29 @@
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(bd onboard:*)",
+      "Bash(bd list:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(bd update:*)",
+      "Bash(gh issue create:*)",
+      "Bash(bd close:*)",
+      "Bash(gh issue close:*)",
+      "Bash(bd sync:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd bd onboarding files and GitHub Copilot instructions\n\n- Add AGENTS.md with bd workflow documentation\n- Add .github/copilot-instructions.md for GitHub Copilot\n- Add .beads/ configuration files\n- Add .gitattributes\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)",
+      "Bash(gh pr list:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd comprehensive unit tests for core modules\n\n- Add pytest, pytest-cov, pytest-mock to requirements.txt\n- Create tests directory with conftest.py and shared fixtures\n- Add test_memory_system.py: Memory, Context, MemorySystem tests\n- Add test_conversation.py: Message, ConversationManager tests\n- Add test_knowledge_base.py: KnowledgeBase, file loading tests\n- Add test_agents.py: Agent classes, AgentOrchestrator tests\n- Add GitHub Actions workflow for CI/CD \\(tests.yml\\)\n- Add pytest.ini configuration\n- Update README.md with testing documentation\n\nCloses #2\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh api:*)"
     ],
     "deny": []
   }
