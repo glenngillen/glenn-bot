@@ -12,6 +12,7 @@ from src.document_ingestion import DocumentIngestionTool
 from src.memory_system import MemorySystem, MemoryType
 from src.quotes_system import QuotesSystem
 from src.feedback_system import FeedbackManager, FeedbackType
+from src.context_detector import ContextDetector
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +40,16 @@ class GlennBot:
         self.orchestrator = AgentOrchestrator(self.knowledge_base, self.ollama_client, self.quotes_system)
         self.ingestion_tool = DocumentIngestionTool(self.knowledge_base, self.ollama_client)
         self.feedback_manager = FeedbackManager()
+
+        # Context detection with thresholds from memory system settings
+        self.context_detector = ContextDetector(
+            self.ollama_client,
+            auto_switch_threshold=self.memory_system.auto_switch_threshold,
+            prompt_threshold=self.memory_system.prompt_threshold
+        )
+
+        # Track pending context switch (awaiting user confirmation)
+        self.pending_context_switch = None
         
     def initialize(self):
         """Initialize the bot and load knowledge base."""
@@ -230,6 +241,20 @@ class GlennBot:
             filename = command.split(" ", 1)[1]
             self._import_knowledge(filename)
 
+        # Auto-context commands
+        elif command == "/auto-context":
+            self._show_auto_context_status()
+
+        elif command == "/auto-context on":
+            self._set_auto_context(True)
+
+        elif command == "/auto-context off":
+            self._set_auto_context(False)
+
+        elif command.startswith("/auto-context threshold "):
+            value_str = command[24:].strip()
+            self._set_auto_context_threshold(value_str)
+
         else:
             self.ui.display_error(f"Unknown command: {command}")
             
@@ -237,12 +262,34 @@ class GlennBot:
         
     def process_query(self, query: str):
         """Process a user query through the agent system."""
+        # Handle pending context switch confirmation
+        if self.pending_context_switch:
+            if query.lower() in ['y', 'yes']:
+                self._apply_context_switch(self.pending_context_switch)
+                self.pending_context_switch = None
+                return
+            elif query.lower() in ['n', 'no']:
+                self.ui.console.print("[yellow]Context switch cancelled[/yellow]")
+                self.pending_context_switch = None
+                return
+            else:
+                # Clear pending switch and process as normal query
+                self.pending_context_switch = None
+
+        # Auto-detect context if enabled
+        if self.memory_system.auto_switch_enabled:
+            self._detect_and_handle_context_switch(query)
+
+        # If there's a pending switch that needs confirmation, don't process query yet
+        if self.pending_context_switch:
+            return
+
         # Add to conversation
         self.conversation.add_message("user", query)
-        
+
         # Get memory context
         memory_context = self.memory_system.get_context_for_query(query)
-        
+
         # Prepare full context
         context = {
             "conversation_context": self.conversation.get_conversation_context(),
@@ -250,14 +297,14 @@ class GlennBot:
             "current_context": memory_context["current_context"],
             "relevant_memories": memory_context["relevant_memories"]
         }
-        
+
         try:
             with self.ui.show_thinking_indicator():
                 response = self.orchestrator.process_query(query, context)
-                
+
             self.conversation.add_message("assistant", response)
             self.ui.display_response(response)
-            
+
             # Extract and save important memories from this interaction
             recent_conversation = self.conversation.get_conversation_context(max_messages=4)
             if len(recent_conversation.split('\n')) > 6:  # Only if substantial conversation
@@ -268,7 +315,84 @@ class GlennBot:
         except Exception as e:
             logger.error(f"Error processing query: {e}")
             self.ui.display_error(f"Failed to process query: {e}")
-            
+
+    def _detect_and_handle_context_switch(self, query: str):
+        """Detect context from query and handle switching."""
+        try:
+            current_context_id = (
+                self.memory_system.current_context.id
+                if self.memory_system.current_context
+                else None
+            )
+
+            # Get recent conversation context for better classification
+            recent_context = self.conversation.get_conversation_context(max_messages=3)
+
+            # Detect context
+            result = self.context_detector.detect_and_recommend(
+                query,
+                current_context_id=current_context_id,
+                recent_context=recent_context
+            )
+
+            if result.should_switch and result.recommended_context:
+                # Check if the recommended context exists in memory system
+                if result.recommended_context not in self.memory_system.contexts:
+                    # Context doesn't exist yet, skip switch
+                    return
+
+                if result.needs_confirmation:
+                    # Prompt user for confirmation
+                    context = self.memory_system.contexts[result.recommended_context]
+                    self.ui.console.print(
+                        f"[yellow]Detected topic shift to '{context.name}' "
+                        f"(confidence: {result.confidence:.0%})[/yellow]"
+                    )
+                    self.ui.console.print(
+                        f"[yellow]Switch context? (y/n)[/yellow]"
+                    )
+                    self.pending_context_switch = {
+                        "to_context": result.recommended_context,
+                        "from_context": current_context_id,
+                        "confidence": result.confidence
+                    }
+                else:
+                    # Auto-switch silently
+                    self._apply_context_switch({
+                        "to_context": result.recommended_context,
+                        "from_context": current_context_id,
+                        "confidence": result.confidence
+                    }, silent=True)
+
+        except Exception as e:
+            logger.warning(f"Context detection failed: {e}")
+            # Continue without context switching on failure
+
+    def _apply_context_switch(self, switch_info: dict, silent: bool = False):
+        """Apply a context switch."""
+        to_context = switch_info["to_context"]
+        from_context = switch_info.get("from_context")
+        confidence = switch_info.get("confidence", 1.0)
+
+        if self.memory_system.switch_context(to_context):
+            context = self.memory_system.current_context
+            if not silent:
+                self.ui.console.print(f"[green]Switched to: {context.name}[/green]")
+            else:
+                self.ui.console.print(
+                    f"[dim]Auto-switched to '{context.name}' context[/dim]"
+                )
+
+            # Record the switch for learning
+            self.memory_system.record_context_switch(
+                from_context=from_context or "none",
+                to_context=to_context,
+                was_auto=silent,
+                confidence=confidence
+            )
+        else:
+            self.ui.display_error(f"Failed to switch to context '{to_context}'")
+
     def _handle_url_ingestion(self, url: str, context: str):
         """Handle adding content from a URL."""
         try:
@@ -341,7 +465,59 @@ class GlennBot:
             )
             
         self.ui.console.print(table)
-        
+
+    def _show_auto_context_status(self):
+        """Show current auto-context settings."""
+        enabled = self.memory_system.auto_switch_enabled
+        auto_threshold = self.memory_system.auto_switch_threshold
+        prompt_threshold = self.memory_system.prompt_threshold
+
+        from rich.panel import Panel
+        from rich.text import Text
+
+        status_text = Text()
+        status_text.append("Auto-context: ", style="bold")
+        status_text.append(
+            "Enabled" if enabled else "Disabled",
+            style="green" if enabled else "red"
+        )
+        status_text.append("\n\n")
+        status_text.append("Auto-switch threshold: ", style="bold")
+        status_text.append(f"{auto_threshold:.0%}", style="cyan")
+        status_text.append(" (switches silently above this)\n")
+        status_text.append("Prompt threshold: ", style="bold")
+        status_text.append(f"{prompt_threshold:.0%}", style="cyan")
+        status_text.append(" (asks for confirmation above this)\n\n")
+        status_text.append("Commands:\n", style="bold")
+        status_text.append("  /auto-context on       - Enable auto-switching\n", style="dim")
+        status_text.append("  /auto-context off      - Disable auto-switching\n", style="dim")
+        status_text.append("  /auto-context threshold <value>  - Set auto-switch threshold (0.0-1.0)\n", style="dim")
+
+        panel = Panel(status_text, title="Auto-Context Settings", border_style="blue")
+        self.ui.console.print(panel)
+
+    def _set_auto_context(self, enabled: bool):
+        """Enable or disable auto-context switching."""
+        self.memory_system.auto_switch_enabled = enabled
+        status = "enabled" if enabled else "disabled"
+        self.ui.console.print(f"[green]Auto-context switching {status}[/green]")
+
+    def _set_auto_context_threshold(self, value_str: str):
+        """Set the auto-context switching threshold."""
+        try:
+            value = float(value_str)
+            if value < 0.0 or value > 1.0:
+                self.ui.display_error("Threshold must be between 0.0 and 1.0")
+                return
+
+            self.memory_system.auto_switch_threshold = value
+            # Update the context detector's threshold too
+            self.context_detector.auto_switch_threshold = value
+            self.ui.console.print(f"[green]Auto-switch threshold set to {value:.0%}[/green]")
+
+        except ValueError:
+            self.ui.display_error(f"Invalid threshold value: {value_str}")
+
     def _switch_context(self, context_id: str):
         """Switch to a different context."""
         if self.memory_system.switch_context(context_id):

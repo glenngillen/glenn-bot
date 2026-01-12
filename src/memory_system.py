@@ -83,23 +83,30 @@ class Context:
 
 class MemorySystem:
     """Manages persistent memory and context switching."""
-    
+
     def __init__(self, knowledge_base: KnowledgeBase, ollama_client: OllamaClient):
         self.knowledge_base = knowledge_base
         self.ollama_client = ollama_client
         self.memory_dir = settings.conversation_history_dir.parent / "memory"
         self.contexts_dir = self.memory_dir / "contexts"
         self.memories_file = self.memory_dir / "memories.json"
-        
+        self.settings_file = self.memory_dir / "settings.json"
+
         # Create directories
         self.memory_dir.mkdir(parents=True, exist_ok=True)
         self.contexts_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Load existing data
         self.memories: Dict[str, Memory] = self._load_memories()
         self.contexts: Dict[str, Context] = self._load_contexts()
         self.current_context: Optional[Context] = None
-        
+
+        # Auto-switch settings
+        self._auto_switch_settings = self._load_auto_switch_settings()
+
+        # Context switch history for learning
+        self.context_switch_history: List[Dict[str, Any]] = []
+
         # Initialize with basic contexts if none exist
         if not self.contexts:
             self._create_default_contexts()
@@ -128,7 +135,88 @@ class MemorySystem:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Error saving memories: {e}")
-            
+
+    def _load_auto_switch_settings(self) -> Dict[str, Any]:
+        """Load auto-switch settings from storage."""
+        default_settings = {
+            "enabled": True,
+            "auto_switch_threshold": 0.8,
+            "prompt_threshold": 0.6,
+            "switch_history": []
+        }
+
+        if not self.settings_file.exists():
+            return default_settings
+
+        try:
+            with open(self.settings_file, 'r') as f:
+                data = json.load(f)
+                # Merge with defaults to ensure all keys exist
+                return {**default_settings, **data}
+        except Exception as e:
+            logger.error(f"Error loading auto-switch settings: {e}")
+            return default_settings
+
+    def _save_auto_switch_settings(self):
+        """Save auto-switch settings to storage."""
+        try:
+            with open(self.settings_file, 'w') as f:
+                json.dump(self._auto_switch_settings, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving auto-switch settings: {e}")
+
+    @property
+    def auto_switch_enabled(self) -> bool:
+        """Check if auto-switching is enabled."""
+        return self._auto_switch_settings.get("enabled", True)
+
+    @auto_switch_enabled.setter
+    def auto_switch_enabled(self, value: bool):
+        """Enable or disable auto-switching."""
+        self._auto_switch_settings["enabled"] = value
+        self._save_auto_switch_settings()
+
+    @property
+    def auto_switch_threshold(self) -> float:
+        """Get the auto-switch threshold."""
+        return self._auto_switch_settings.get("auto_switch_threshold", 0.8)
+
+    @auto_switch_threshold.setter
+    def auto_switch_threshold(self, value: float):
+        """Set the auto-switch threshold."""
+        self._auto_switch_settings["auto_switch_threshold"] = max(0.0, min(1.0, value))
+        self._save_auto_switch_settings()
+
+    @property
+    def prompt_threshold(self) -> float:
+        """Get the prompt threshold."""
+        return self._auto_switch_settings.get("prompt_threshold", 0.6)
+
+    @prompt_threshold.setter
+    def prompt_threshold(self, value: float):
+        """Set the prompt threshold."""
+        self._auto_switch_settings["prompt_threshold"] = max(0.0, min(1.0, value))
+        self._save_auto_switch_settings()
+
+    def record_context_switch(self, from_context: str, to_context: str,
+                             was_auto: bool, confidence: float):
+        """Record a context switch for learning purposes."""
+        switch_record = {
+            "from": from_context,
+            "to": to_context,
+            "was_auto": was_auto,
+            "confidence": confidence,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.context_switch_history.append(switch_record)
+
+        # Keep in settings for persistence
+        history = self._auto_switch_settings.get("switch_history", [])
+        history.append(switch_record)
+        # Keep only last 100 switches
+        self._auto_switch_settings["switch_history"] = history[-100:]
+        self._save_auto_switch_settings()
+
     def _load_contexts(self) -> Dict[str, Context]:
         """Load contexts from storage."""
         contexts = {}
@@ -156,6 +244,44 @@ class MemorySystem:
     def _create_default_contexts(self):
         """Create default operating contexts."""
         default_contexts = [
+            # Core auto-detected contexts (work, personal, creative, reflection)
+            {
+                "id": "work",
+                "name": "Work",
+                "description": "Professional work, career, business tasks, meetings, deadlines",
+                "context_type": "work",
+                "goals": ["Complete projects", "Meet deadlines", "Professional growth"],
+                "key_people": [],
+                "current_focus": "Current tasks"
+            },
+            {
+                "id": "personal",
+                "name": "Personal",
+                "description": "Personal life, family, friends, health, daily activities",
+                "context_type": "personal",
+                "goals": ["Work-life balance", "Healthy relationships", "Personal wellbeing"],
+                "key_people": [],
+                "current_focus": "Daily life"
+            },
+            {
+                "id": "creative",
+                "name": "Creative",
+                "description": "Creative projects, art, writing, music, brainstorming ideas",
+                "context_type": "creative",
+                "goals": ["Express creativity", "Complete creative projects", "Explore ideas"],
+                "key_people": [],
+                "current_focus": "Creative exploration"
+            },
+            {
+                "id": "reflection",
+                "name": "Reflection",
+                "description": "Self-reflection, personal growth, philosophy, deep thinking",
+                "context_type": "reflection",
+                "goals": ["Self-awareness", "Personal growth", "Deeper understanding"],
+                "key_people": [],
+                "current_focus": "Self-discovery"
+            },
+            # Additional specialized contexts
             {
                 "id": "personal_brand",
                 "name": "Personal Brand Building",
@@ -169,7 +295,7 @@ class MemorySystem:
                 "id": "product_dev",
                 "name": "Product Development",
                 "description": "Working on product ideas, development, and improvement",
-                "context_type": "product_development", 
+                "context_type": "product_development",
                 "goals": ["Build innovative products", "Solve user problems", "Generate value"],
                 "key_people": [],
                 "current_focus": "Ideation phase"
