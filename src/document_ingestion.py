@@ -1,7 +1,11 @@
 import requests
+import asyncio
+import aiohttp
 from bs4 import BeautifulSoup
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Callable
+from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from urllib.parse import urlparse
 import logging
@@ -11,6 +15,43 @@ from src.ollama_client import OllamaClient
 from src.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+class ProcessingStatus(Enum):
+    """Status of URL processing."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@dataclass
+class URLProcessingResult:
+    """Result of processing a single URL."""
+    url: str
+    status: ProcessingStatus
+    classification: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+@dataclass
+class BatchProgress:
+    """Progress information for batch URL processing."""
+    total: int
+    completed: int = 0
+    failed: int = 0
+    current_url: Optional[str] = None
+    results: List[URLProcessingResult] = field(default_factory=list)
+
+    @property
+    def pending(self) -> int:
+        return self.total - self.completed - self.failed
+
+    @property
+    def percentage(self) -> float:
+        if self.total == 0:
+            return 100.0
+        return ((self.completed + self.failed) / self.total) * 100
 
 class DocumentIngestionTool:
     def __init__(self, knowledge_base: KnowledgeBase, ollama_client: OllamaClient):
@@ -51,7 +92,182 @@ class DocumentIngestionTool:
         except Exception as e:
             logger.error(f"Error fetching webpage {url}: {e}")
             raise
-            
+
+    async def fetch_webpage_async(self, url: str, session: Optional[aiohttp.ClientSession] = None) -> str:
+        """Fetch and extract text content from a webpage asynchronously."""
+        close_session = False
+        if session is None:
+            session = aiohttp.ClientSession()
+            close_session = True
+
+        try:
+            # Handle Google Docs URLs
+            original_url = url
+            if 'docs.google.com' in url:
+                if '/edit' in url:
+                    doc_id = url.split('/d/')[1].split('/')[0]
+                    url = f"https://docs.google.com/document/d/{doc_id}/export?format=txt"
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+            }
+
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                response.raise_for_status()
+                content = await response.text()
+
+            # For Google Docs export, content is already plain text
+            if 'docs.google.com' in url and 'export?format=txt' in url:
+                return content.strip()
+
+            soup = BeautifulSoup(content, 'html.parser')
+
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+
+            # Convert to markdown for better formatting
+            content = md(str(soup), heading_style="ATX")
+
+            return content.strip()
+
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout fetching webpage {original_url}")
+            raise
+        except Exception as e:
+            logger.error(f"Error fetching webpage {original_url}: {e}")
+            raise
+        finally:
+            if close_session:
+                await session.close()
+
+    async def add_web_content_async(
+        self,
+        url: str,
+        user_context: str = "",
+        session: Optional[aiohttp.ClientSession] = None
+    ) -> Dict[str, Any]:
+        """Fetch web content and add it to the knowledge base asynchronously."""
+
+        # Fetch content asynchronously
+        content = await self.fetch_webpage_async(url, session)
+
+        # Classification and storage are still synchronous (CPU-bound)
+        classification = self.classify_content(content, user_context)
+
+        # Prepare content for storage
+        formatted_content = f"""Source: {url}
+Context: {user_context}
+
+{classification['description']}
+
+Key Points:
+{chr(10).join([f"- {point}" for point in classification['key_points']])}
+
+Content:
+{content[:3000]}{"..." if len(content) > 3000 else ""}
+"""
+
+        # Prepare metadata
+        metadata = {
+            "type": classification["type"],
+            "name": classification["name"],
+            "source": "web",
+            "url": url,
+            "user_context": user_context
+        }
+
+        if classification.get("category"):
+            metadata["category"] = classification["category"]
+
+        # Add to knowledge base
+        self.knowledge_base.add_document(formatted_content, metadata)
+
+        # Save to appropriate file if it's a structured type
+        self._save_to_file(classification, url, user_context, content)
+
+        return classification
+
+    async def batch_process_urls(
+        self,
+        urls: List[str],
+        user_context: str = "",
+        max_concurrent: int = 5,
+        progress_callback: Optional[Callable[[BatchProgress], None]] = None
+    ) -> BatchProgress:
+        """
+        Process multiple URLs concurrently with progress tracking.
+
+        Args:
+            urls: List of URLs to process
+            user_context: Context string to apply to all URLs
+            max_concurrent: Maximum number of concurrent fetches
+            progress_callback: Optional callback called with progress updates
+
+        Returns:
+            BatchProgress object with all results
+        """
+        progress = BatchProgress(total=len(urls))
+
+        if progress_callback:
+            progress_callback(progress)
+
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def process_single_url(url: str) -> URLProcessingResult:
+            async with semaphore:
+                progress.current_url = url
+                if progress_callback:
+                    progress_callback(progress)
+
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        classification = await self.add_web_content_async(url, user_context, session)
+                        result = URLProcessingResult(
+                            url=url,
+                            status=ProcessingStatus.COMPLETED,
+                            classification=classification
+                        )
+                        progress.completed += 1
+                except Exception as e:
+                    result = URLProcessingResult(
+                        url=url,
+                        status=ProcessingStatus.FAILED,
+                        error=str(e)
+                    )
+                    progress.failed += 1
+                    logger.error(f"Failed to process {url}: {e}")
+
+                progress.results.append(result)
+                progress.current_url = None
+
+                if progress_callback:
+                    progress_callback(progress)
+
+                return result
+
+        # Process all URLs concurrently (limited by semaphore)
+        await asyncio.gather(*[process_single_url(url) for url in urls])
+
+        return progress
+
+    def batch_process_urls_sync(
+        self,
+        urls: List[str],
+        user_context: str = "",
+        max_concurrent: int = 5,
+        progress_callback: Optional[Callable[[BatchProgress], None]] = None
+    ) -> BatchProgress:
+        """
+        Synchronous wrapper for batch_process_urls.
+
+        Runs the async batch processing in a new event loop.
+        Use this from synchronous code (like the terminal UI).
+        """
+        return asyncio.run(
+            self.batch_process_urls(urls, user_context, max_concurrent, progress_callback)
+        )
+
     def classify_content(self, content: str, user_context: str) -> Dict[str, Any]:
         """Use LLM to classify the content and determine how to store it."""
         
