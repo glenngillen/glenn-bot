@@ -220,6 +220,16 @@ class GlennBot:
         elif command == "/feedback-insights":
             self._show_feedback_insights()
 
+        # Knowledge export/import commands
+        elif command == "/export-knowledge" or command.startswith("/export-knowledge "):
+            parts = command.split(" ", 1)
+            filename = parts[1] if len(parts) > 1 else None
+            self._export_knowledge(filename)
+
+        elif command.startswith("/import-knowledge "):
+            filename = command.split(" ", 1)[1]
+            self._import_knowledge(filename)
+
         else:
             self.ui.display_error(f"Unknown command: {command}")
             
@@ -1125,6 +1135,126 @@ class GlennBot:
         except Exception as e:
             logger.error(f"Error showing feedback insights: {e}")
             self.ui.display_error(f"Failed to show feedback insights: {e}")
+
+    def _export_knowledge(self, filename: Optional[str] = None):
+        """Export the knowledge base to a JSON file."""
+        try:
+            # Generate default filename if not provided
+            if not filename:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"knowledge_backup_{timestamp}.json"
+
+            # Ask for optional filters
+            self.ui.console.print("[yellow]Export Options:[/yellow]")
+            self.ui.console.print("1. Export all documents")
+            self.ui.console.print("2. Export by type (value, framework, preference, memory, etc.)")
+            self.ui.console.print("3. Export by source (knowledge_files, web, etc.)")
+
+            try:
+                choice = input("Select option (1-3, default 1): ").strip() or "1"
+
+                filter_type = None
+                filter_source = None
+
+                if choice == "2":
+                    # Show available types
+                    stats = self.knowledge_base.get_stats()
+                    self.ui.console.print(f"[dim]Available types: {', '.join(stats['types'].keys())}[/dim]")
+                    filter_type = input("Enter type to export: ").strip()
+                elif choice == "3":
+                    filter_source = input("Enter source to export: ").strip()
+
+                with self.ui.show_thinking_indicator():
+                    export_data = self.knowledge_base.export_knowledge(
+                        filter_type=filter_type,
+                        filter_source=filter_source
+                    )
+
+                # Write to file
+                output_path = Path(filename)
+                with open(output_path, 'w') as f:
+                    json.dump(export_data, f, indent=2)
+
+                self.ui.console.print(f"[green]✓ Exported {export_data['total_documents']} documents to {filename}[/green]")
+                self.ui.console.print(f"[dim]Export timestamp: {export_data['export_timestamp']}[/dim]")
+
+                if filter_type or filter_source:
+                    self.ui.console.print(f"[dim]Filters applied - Type: {filter_type}, Source: {filter_source}[/dim]")
+
+            except KeyboardInterrupt:
+                self.ui.console.print("\n[dim]Export cancelled[/dim]")
+
+        except Exception as e:
+            logger.error(f"Error exporting knowledge: {e}")
+            self.ui.display_error(f"Failed to export knowledge: {e}")
+
+    def _import_knowledge(self, filename: str):
+        """Import knowledge from a JSON backup file."""
+        try:
+            input_path = Path(filename)
+
+            if not input_path.exists():
+                self.ui.display_error(f"File not found: {filename}")
+                return
+
+            # Load the file
+            with open(input_path, 'r') as f:
+                import_data = json.load(f)
+
+            # Show import info
+            self.ui.console.print(f"[yellow]Import File: {filename}[/yellow]")
+            self.ui.console.print(f"[dim]Export version: {import_data.get('export_version', 'unknown')}[/dim]")
+            self.ui.console.print(f"[dim]Export timestamp: {import_data.get('export_timestamp', 'unknown')}[/dim]")
+            self.ui.console.print(f"[dim]Documents in file: {import_data.get('total_documents', len(import_data.get('documents', [])))}[/dim]")
+
+            # Ask for duplicate handling
+            self.ui.console.print("\n[yellow]Duplicate Handling:[/yellow]")
+            self.ui.console.print("1. Skip - Don't import documents with existing IDs (default)")
+            self.ui.console.print("2. Update - Replace existing documents with import data")
+            self.ui.console.print("3. Fail - Stop import if any duplicates found")
+
+            try:
+                choice = input("Select option (1-3, default 1): ").strip() or "1"
+
+                duplicate_map = {"1": "skip", "2": "update", "3": "fail"}
+                duplicate_handling = duplicate_map.get(choice, "skip")
+
+                # Confirm import
+                confirm = input(f"Proceed with import ({duplicate_handling} duplicates)? [y/N]: ").strip().lower()
+                if confirm != 'y':
+                    self.ui.console.print("[dim]Import cancelled[/dim]")
+                    return
+
+                with self.ui.show_thinking_indicator():
+                    stats = self.knowledge_base.import_knowledge(
+                        import_data,
+                        duplicate_handling=duplicate_handling
+                    )
+
+                # Show results
+                self.ui.console.print(f"[green]✓ Import complete![/green]")
+                self.ui.console.print(f"  Documents in file: {stats['total_in_file']}")
+                self.ui.console.print(f"  Added: {stats['added']}")
+                self.ui.console.print(f"  Updated: {stats['updated']}")
+                self.ui.console.print(f"  Skipped: {stats['skipped']}")
+
+                if stats['errors'] > 0:
+                    self.ui.console.print(f"[yellow]  Errors: {stats['errors']}[/yellow]")
+                    for error_msg in stats['error_messages'][:5]:  # Show first 5 errors
+                        self.ui.console.print(f"[dim]    - {error_msg}[/dim]")
+
+                # Show new stats
+                new_stats = self.knowledge_base.get_stats()
+                self.ui.console.print(f"\n[dim]Knowledge base now has {new_stats['total_documents']} total documents[/dim]")
+
+            except KeyboardInterrupt:
+                self.ui.console.print("\n[dim]Import cancelled[/dim]")
+
+        except json.JSONDecodeError as e:
+            self.ui.display_error(f"Invalid JSON file: {e}")
+        except Exception as e:
+            logger.error(f"Error importing knowledge: {e}")
+            self.ui.display_error(f"Failed to import knowledge: {e}")
 
     def run(self):
         """Main application loop."""

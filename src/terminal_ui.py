@@ -154,6 +154,8 @@ Let's collaborate!
 - `/add-url <url> [context]` - Add content from a webpage to knowledge base
 - `/add-text <name> [context]` - Add manually entered text to knowledge base
 - `/clean-knowledge` - Remove duplicate knowledge base entries
+- `/export-knowledge [filename]` - Export knowledge base to JSON backup
+- `/import-knowledge <filename>` - Import knowledge from JSON backup
 
 ### Quotes & Inspiration
 - `/add-quote "<quote>" "<author>" [context]` - Add an inspirational quote

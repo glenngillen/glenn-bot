@@ -388,3 +388,305 @@ class TestKnowledgeBase:
             kb.search("test query")
 
         assert "Search failed" in str(exc_info.value)
+
+    @patch('src.knowledge_base.OllamaClient')
+    @patch('src.knowledge_base.chromadb')
+    @patch('src.knowledge_base.settings')
+    def test_export_knowledge(self, mock_settings, mock_chromadb, mock_ollama_class, temp_dir):
+        """Test exporting knowledge base to dictionary."""
+        mock_settings.chroma_persist_directory = temp_dir / "chroma"
+        mock_settings.chroma_collection_name = "test_collection"
+
+        # Mock chromadb
+        mock_collection = MagicMock()
+        mock_collection.get.return_value = {
+            "ids": ["doc_1", "doc_2", "doc_3"],
+            "documents": ["Content 1", "Content 2", "Content 3"],
+            "metadatas": [
+                {"type": "value", "source": "knowledge_files"},
+                {"type": "framework", "source": "knowledge_files"},
+                {"type": "value", "source": "web"}
+            ],
+            "embeddings": [[0.1] * 768, [0.2] * 768, [0.3] * 768]
+        }
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.PersistentClient.return_value = mock_client
+
+        # Mock ollama
+        mock_ollama_instance = MagicMock()
+        mock_ollama_class.return_value = mock_ollama_instance
+
+        from src.knowledge_base import KnowledgeBase
+
+        kb = KnowledgeBase()
+        export_data = kb.export_knowledge()
+
+        assert export_data["export_version"] == "1.0"
+        assert "export_timestamp" in export_data
+        assert export_data["total_documents"] == 3
+        assert len(export_data["documents"]) == 3
+        assert export_data["documents"][0]["id"] == "doc_1"
+        assert export_data["documents"][0]["content"] == "Content 1"
+
+    @patch('src.knowledge_base.OllamaClient')
+    @patch('src.knowledge_base.chromadb')
+    @patch('src.knowledge_base.settings')
+    def test_export_knowledge_with_type_filter(self, mock_settings, mock_chromadb, mock_ollama_class, temp_dir):
+        """Test exporting knowledge with type filter."""
+        mock_settings.chroma_persist_directory = temp_dir / "chroma"
+        mock_settings.chroma_collection_name = "test_collection"
+
+        # Mock chromadb
+        mock_collection = MagicMock()
+        mock_collection.get.return_value = {
+            "ids": ["doc_1", "doc_2", "doc_3"],
+            "documents": ["Content 1", "Content 2", "Content 3"],
+            "metadatas": [
+                {"type": "value", "source": "knowledge_files"},
+                {"type": "framework", "source": "knowledge_files"},
+                {"type": "value", "source": "web"}
+            ],
+            "embeddings": [[0.1] * 768, [0.2] * 768, [0.3] * 768]
+        }
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.PersistentClient.return_value = mock_client
+
+        # Mock ollama
+        mock_ollama_instance = MagicMock()
+        mock_ollama_class.return_value = mock_ollama_instance
+
+        from src.knowledge_base import KnowledgeBase
+
+        kb = KnowledgeBase()
+        export_data = kb.export_knowledge(filter_type="value")
+
+        # Should only export documents with type "value"
+        assert export_data["total_documents"] == 2
+        assert len(export_data["documents"]) == 2
+        assert all(doc["metadata"]["type"] == "value" for doc in export_data["documents"])
+
+    @patch('src.knowledge_base.OllamaClient')
+    @patch('src.knowledge_base.chromadb')
+    @patch('src.knowledge_base.settings')
+    def test_export_knowledge_with_source_filter(self, mock_settings, mock_chromadb, mock_ollama_class, temp_dir):
+        """Test exporting knowledge with source filter."""
+        mock_settings.chroma_persist_directory = temp_dir / "chroma"
+        mock_settings.chroma_collection_name = "test_collection"
+
+        # Mock chromadb
+        mock_collection = MagicMock()
+        mock_collection.get.return_value = {
+            "ids": ["doc_1", "doc_2", "doc_3"],
+            "documents": ["Content 1", "Content 2", "Content 3"],
+            "metadatas": [
+                {"type": "value", "source": "knowledge_files"},
+                {"type": "framework", "source": "knowledge_files"},
+                {"type": "value", "source": "web"}
+            ],
+            "embeddings": [[0.1] * 768, [0.2] * 768, [0.3] * 768]
+        }
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.PersistentClient.return_value = mock_client
+
+        # Mock ollama
+        mock_ollama_instance = MagicMock()
+        mock_ollama_class.return_value = mock_ollama_instance
+
+        from src.knowledge_base import KnowledgeBase
+
+        kb = KnowledgeBase()
+        export_data = kb.export_knowledge(filter_source="web")
+
+        # Should only export documents with source "web"
+        assert export_data["total_documents"] == 1
+        assert export_data["documents"][0]["metadata"]["source"] == "web"
+
+    @patch('src.knowledge_base.OllamaClient')
+    @patch('src.knowledge_base.chromadb')
+    @patch('src.knowledge_base.settings')
+    def test_import_knowledge_skip_duplicates(self, mock_settings, mock_chromadb, mock_ollama_class, temp_dir):
+        """Test importing knowledge with skip duplicates strategy."""
+        mock_settings.chroma_persist_directory = temp_dir / "chroma"
+        mock_settings.chroma_collection_name = "test_collection"
+
+        # Mock chromadb
+        mock_collection = MagicMock()
+        # Existing docs have doc_1
+        mock_collection.get.return_value = {"ids": ["doc_1"]}
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.PersistentClient.return_value = mock_client
+
+        # Mock ollama
+        mock_ollama_instance = MagicMock()
+        mock_ollama_instance.get_embeddings.return_value = [0.1] * 768
+        mock_ollama_class.return_value = mock_ollama_instance
+
+        from src.knowledge_base import KnowledgeBase
+
+        kb = KnowledgeBase()
+
+        import_data = {
+            "export_version": "1.0",
+            "documents": [
+                {"id": "doc_1", "content": "Duplicate content", "metadata": {"type": "value"}},
+                {"id": "doc_2", "content": "New content", "metadata": {"type": "framework"}}
+            ]
+        }
+
+        stats = kb.import_knowledge(import_data, duplicate_handling="skip")
+
+        assert stats["total_in_file"] == 2
+        assert stats["skipped"] == 1  # doc_1 skipped
+        assert stats["added"] == 1   # doc_2 added
+        assert stats["errors"] == 0
+
+    @patch('src.knowledge_base.OllamaClient')
+    @patch('src.knowledge_base.chromadb')
+    @patch('src.knowledge_base.settings')
+    def test_import_knowledge_update_duplicates(self, mock_settings, mock_chromadb, mock_ollama_class, temp_dir):
+        """Test importing knowledge with update duplicates strategy."""
+        mock_settings.chroma_persist_directory = temp_dir / "chroma"
+        mock_settings.chroma_collection_name = "test_collection"
+
+        # Mock chromadb
+        mock_collection = MagicMock()
+        mock_collection.get.return_value = {"ids": ["doc_1"]}
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.PersistentClient.return_value = mock_client
+
+        # Mock ollama
+        mock_ollama_instance = MagicMock()
+        mock_ollama_instance.get_embeddings.return_value = [0.1] * 768
+        mock_ollama_class.return_value = mock_ollama_instance
+
+        from src.knowledge_base import KnowledgeBase
+
+        kb = KnowledgeBase()
+
+        import_data = {
+            "export_version": "1.0",
+            "documents": [
+                {"id": "doc_1", "content": "Updated content", "metadata": {"type": "value"}}
+            ]
+        }
+
+        stats = kb.import_knowledge(import_data, duplicate_handling="update")
+
+        # Should have deleted and re-added
+        mock_collection.delete.assert_called_with(ids=["doc_1"])
+        assert stats["added"] == 1
+
+    @patch('src.knowledge_base.OllamaClient')
+    @patch('src.knowledge_base.chromadb')
+    @patch('src.knowledge_base.settings')
+    def test_import_knowledge_fail_on_duplicates(self, mock_settings, mock_chromadb, mock_ollama_class, temp_dir):
+        """Test importing knowledge fails on duplicates when configured."""
+        mock_settings.chroma_persist_directory = temp_dir / "chroma"
+        mock_settings.chroma_collection_name = "test_collection"
+
+        # Mock chromadb
+        mock_collection = MagicMock()
+        mock_collection.get.return_value = {"ids": ["doc_1"]}
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.PersistentClient.return_value = mock_client
+
+        # Mock ollama
+        mock_ollama_instance = MagicMock()
+        mock_ollama_class.return_value = mock_ollama_instance
+
+        from src.knowledge_base import KnowledgeBase
+
+        kb = KnowledgeBase()
+
+        import_data = {
+            "export_version": "1.0",
+            "documents": [
+                {"id": "doc_1", "content": "Duplicate", "metadata": {"type": "value"}}
+            ]
+        }
+
+        with pytest.raises(ValueError) as exc_info:
+            kb.import_knowledge(import_data, duplicate_handling="fail")
+
+        assert "Duplicate document ID" in str(exc_info.value)
+
+    @patch('src.knowledge_base.OllamaClient')
+    @patch('src.knowledge_base.chromadb')
+    @patch('src.knowledge_base.settings')
+    def test_import_knowledge_invalid_data(self, mock_settings, mock_chromadb, mock_ollama_class, temp_dir):
+        """Test importing invalid data raises error."""
+        mock_settings.chroma_persist_directory = temp_dir / "chroma"
+        mock_settings.chroma_collection_name = "test_collection"
+
+        # Mock chromadb
+        mock_collection = MagicMock()
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.PersistentClient.return_value = mock_client
+
+        # Mock ollama
+        mock_ollama_instance = MagicMock()
+        mock_ollama_class.return_value = mock_ollama_instance
+
+        from src.knowledge_base import KnowledgeBase
+
+        kb = KnowledgeBase()
+
+        # Missing documents key
+        invalid_data = {"export_version": "1.0"}
+
+        with pytest.raises(ValueError) as exc_info:
+            kb.import_knowledge(invalid_data)
+
+        assert "missing 'documents' key" in str(exc_info.value)
+
+    @patch('src.knowledge_base.OllamaClient')
+    @patch('src.knowledge_base.chromadb')
+    @patch('src.knowledge_base.settings')
+    def test_import_knowledge_uses_provided_embeddings(self, mock_settings, mock_chromadb, mock_ollama_class, temp_dir):
+        """Test that import uses provided embeddings instead of generating new ones."""
+        mock_settings.chroma_persist_directory = temp_dir / "chroma"
+        mock_settings.chroma_collection_name = "test_collection"
+
+        # Mock chromadb
+        mock_collection = MagicMock()
+        mock_collection.get.return_value = {"ids": []}
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.PersistentClient.return_value = mock_client
+
+        # Mock ollama
+        mock_ollama_instance = MagicMock()
+        mock_ollama_class.return_value = mock_ollama_instance
+
+        from src.knowledge_base import KnowledgeBase
+
+        kb = KnowledgeBase()
+
+        provided_embedding = [0.5] * 768
+        import_data = {
+            "export_version": "1.0",
+            "documents": [
+                {
+                    "id": "doc_1",
+                    "content": "Content with embedding",
+                    "metadata": {"type": "value"},
+                    "embedding": provided_embedding
+                }
+            ]
+        }
+
+        kb.import_knowledge(import_data)
+
+        # Should not have called get_embeddings since embedding was provided
+        mock_ollama_instance.get_embeddings.assert_not_called()
+
+        # Should have used the provided embedding
+        call_kwargs = mock_collection.add.call_args
+        assert call_kwargs[1]["embeddings"] == [provided_embedding]
