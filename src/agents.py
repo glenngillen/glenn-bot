@@ -398,7 +398,7 @@ class AgentOrchestrator:
 Original Query: {query}
 
 Expert Responses:
-{chr(10).join([f"**{r['agent']}** (confidence: {r['confidence']:.2f}):\n{r['response']}\n" for r in responses])}
+{chr(10).join([f"**{r['agent']}** (confidence: {r['confidence']:.2f}):{chr(10)}{r['response']}{chr(10)}" for r in responses])}
 
 Apply your reasoning capabilities to:
 1. Identify the best insights from each perspective
