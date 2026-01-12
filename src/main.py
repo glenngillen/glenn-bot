@@ -8,7 +8,7 @@ from src.knowledge_base import KnowledgeBase
 from src.conversation import ConversationManager
 from src.ollama_client import OllamaClient
 from src.agents import AgentOrchestrator
-from src.document_ingestion import DocumentIngestionTool
+from src.document_ingestion import DocumentIngestionTool, BatchProgress, ProcessingStatus
 from src.memory_system import MemorySystem, MemoryType
 from src.quotes_system import QuotesSystem
 from src.feedback_system import FeedbackManager, FeedbackType
@@ -119,7 +119,14 @@ class GlennBot:
                 name = parts[1]
                 context = parts[2] if len(parts) > 2 else ""
                 self._handle_text_ingestion(name, context)
-                
+
+        elif command == "/add-urls":
+            self._handle_batch_url_ingestion()
+
+        elif command.startswith("/add-urls "):
+            context = command[10:].strip()  # Remove "/add-urls "
+            self._handle_batch_url_ingestion(context)
+
         elif command == "/contexts":
             self._show_contexts()
             
@@ -302,7 +309,90 @@ class GlennBot:
         except Exception as e:
             logger.error(f"Error ingesting text content: {e}")
             self.ui.display_error(f"Failed to ingest content: {e}")
-            
+
+    def _handle_batch_url_ingestion(self, context: str = ""):
+        """Handle adding content from multiple URLs concurrently."""
+        try:
+            self.ui.console.print("[yellow]Enter URLs to process (one per line, press Ctrl+D when done):[/yellow]")
+
+            urls = []
+            try:
+                while True:
+                    line = input().strip()
+                    if line:
+                        urls.append(line)
+            except EOFError:
+                pass
+
+            if not urls:
+                self.ui.display_error("No URLs provided")
+                return
+
+            self.ui.console.print(f"\n[cyan]Processing {len(urls)} URLs concurrently...[/cyan]")
+
+            # Create a progress display callback
+            from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=self.ui.console,
+                transient=True
+            ) as progress_bar:
+                task_id = progress_bar.add_task("Processing URLs", total=len(urls))
+
+                def progress_callback(batch_progress: BatchProgress):
+                    progress_bar.update(
+                        task_id,
+                        completed=batch_progress.completed + batch_progress.failed,
+                        description=f"Processing: {batch_progress.current_url or 'waiting...'}"[:50]
+                    )
+
+                # Run batch processing
+                result = self.ingestion_tool.batch_process_urls_sync(
+                    urls=urls,
+                    user_context=context,
+                    max_concurrent=5,
+                    progress_callback=progress_callback
+                )
+
+            # Display results
+            self.ui.console.print(f"\n[green]✓ Completed: {result.completed}/{result.total}[/green]")
+            if result.failed > 0:
+                self.ui.console.print(f"[red]✗ Failed: {result.failed}[/red]")
+
+            # Show details for each result
+            from rich.table import Table
+            table = Table(title="Batch Processing Results")
+            table.add_column("Status", style="cyan")
+            table.add_column("URL", style="white", max_width=50)
+            table.add_column("Result", style="green")
+
+            for res in result.results:
+                if res.status == ProcessingStatus.COMPLETED:
+                    status_icon = "✓"
+                    result_text = f"{res.classification['type']}: {res.classification['name']}"
+                else:
+                    status_icon = "✗"
+                    result_text = res.error or "Unknown error"
+
+                # Truncate URL for display
+                display_url = res.url
+                if len(display_url) > 50:
+                    display_url = display_url[:47] + "..."
+
+                table.add_row(status_icon, display_url, result_text[:40])
+
+            self.ui.console.print(table)
+
+        except KeyboardInterrupt:
+            self.ui.console.print("\n[yellow]Batch processing cancelled[/yellow]")
+        except Exception as e:
+            logger.error(f"Error in batch URL ingestion: {e}")
+            self.ui.display_error(f"Failed to process URLs: {e}")
+
     def _show_contexts(self):
         """Show available contexts."""
         contexts = list(self.memory_system.contexts.values())

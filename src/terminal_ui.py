@@ -152,6 +152,7 @@ Let's collaborate!
 - `/knowledge` - Display knowledge base statistics
 - `/frameworks` - List available problem-solving frameworks
 - `/add-url <url> [context]` - Add content from a webpage to knowledge base
+- `/add-urls [context]` - Batch add multiple URLs concurrently (with progress)
 - `/add-text <name> [context]` - Add manually entered text to knowledge base
 - `/clean-knowledge` - Remove duplicate knowledge base entries
 
