@@ -118,7 +118,7 @@ data/library-site/         # Generated site
 - [x] 19. Create test file `tests/test_content_exporter.py`
 - [x] 20. Write tests for ContentExporter initialization with KnowledgeBase
 - [x] 21. Implement ContentExporter class skeleton in `src/library/content_exporter.py`
-- [ ] 22. Write tests for _infer_content_type() mapping (value->VALUE, framework->FRAMEWORK, web->WEB_CONTENT, preference->PREFERENCE, memory->MEMORY)
+- [x] 22. Write tests for _infer_content_type() mapping (value->VALUE, framework->FRAMEWORK, web->WEB_CONTENT, preference->PREFERENCE, memory->MEMORY)
 - [ ] 23. Implement _infer_content_type() content type mapping
 - [ ] 24. Write tests for _generate_title() when metadata lacks 'name' (first 50 chars)
 - [ ] 25. Implement _generate_title() title generation
