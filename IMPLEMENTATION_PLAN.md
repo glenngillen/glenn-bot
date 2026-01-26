@@ -157,7 +157,7 @@ data/library-site/         # Generated site
 - [x] 55. Write tests for assign_items_to_themes() with confidence scores
 - [x] 56. Implement assign_items_to_themes() method
 - [x] 57. Write tests for update_assignments() for incremental updates
-- [ ] 58. Implement update_assignments() for new content
+- [x] 58. Implement update_assignments() for new content
 - [ ] 59. Write tests for "Miscellaneous" catch-all theme (confidence < 0.3)
 - [ ] 60. Implement catch-all theme handling
 - [ ] 61. Write tests for get_items_for_theme() returning assigned items
