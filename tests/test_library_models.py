@@ -581,3 +581,136 @@ class TestLibraryItemSerialization:
 
             result = LibraryItem.from_dict(data)
             assert result.content_type == ContentType(type_str)
+
+
+class TestTheme:
+    """Tests for the Theme dataclass."""
+
+    def test_theme_has_required_fields(self):
+        """Theme should have all required fields."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="systems-thinking",
+            name="Systems Thinking",
+            description="Mental models for understanding complex systems",
+            keywords=["systems", "feedback", "complexity", "mental models"],
+            item_count=15,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        assert theme.id == "systems-thinking"
+        assert theme.name == "Systems Thinking"
+        assert theme.description == "Mental models for understanding complex systems"
+        assert theme.keywords == ["systems", "feedback", "complexity", "mental models"]
+        assert theme.item_count == 15
+        assert theme.created_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert theme.updated_at == datetime(2024, 1, 20, 14, 0, 0)
+
+    def test_theme_id_is_string(self):
+        """Theme id should be a string (slug format)."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="personal-growth",
+            name="Personal Growth",
+            description="Self-improvement and learning",
+            keywords=["growth", "learning"],
+            item_count=10,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert isinstance(theme.id, str)
+
+    def test_theme_keywords_can_be_empty(self):
+        """Theme should allow an empty keywords list."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="miscellaneous",
+            name="Miscellaneous",
+            description="Uncategorized content",
+            keywords=[],
+            item_count=5,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert theme.keywords == []
+
+    def test_theme_item_count_can_be_zero(self):
+        """Theme should allow item_count of zero (new/empty theme)."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="new-theme",
+            name="New Theme",
+            description="A newly created theme with no items yet",
+            keywords=["new"],
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert theme.item_count == 0
+
+    def test_theme_updated_at_can_equal_created_at(self):
+        """Theme updated_at can be the same as created_at (never updated)."""
+        from src.library.models import Theme
+
+        same_time = datetime(2024, 1, 15, 10, 30, 0)
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=[],
+            item_count=0,
+            created_at=same_time,
+            updated_at=same_time,
+        )
+
+        assert theme.created_at == theme.updated_at
+
+    def test_theme_updated_at_can_be_after_created_at(self):
+        """Theme updated_at should be able to be after created_at."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=[],
+            item_count=10,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 2, 20, 15, 45, 0),
+        )
+
+        assert theme.updated_at > theme.created_at
+
+    def test_theme_is_dataclass(self):
+        """Theme should be a dataclass."""
+        from dataclasses import is_dataclass
+        from src.library.models import Theme
+
+        assert is_dataclass(Theme)
+
+    def test_theme_keywords_preserves_order(self):
+        """Theme keywords should preserve insertion order."""
+        from src.library.models import Theme
+
+        keywords = ["first", "second", "third", "fourth"]
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=keywords,
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert theme.keywords == keywords
+        assert theme.keywords[0] == "first"
+        assert theme.keywords[-1] == "fourth"
