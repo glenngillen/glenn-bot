@@ -550,3 +550,221 @@ class TestLoadThemes:
         assert result == generator.themes
         assert len(result) == 1
         assert result[0].id == "test-theme"
+
+
+class TestSaveAssignments:
+    """Tests for save_assignments() method that persists assignments to assignments.json."""
+
+    def test_save_assignments_creates_assignments_file(self, mock_ollama_client, temp_dir):
+        """save_assignments() should create assignments.json file in data_dir."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Add an assignment to save
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="personal-growth",
+            confidence=0.85,
+            assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+        )
+        generator.assignments = [assignment]
+
+        generator.save_assignments()
+
+        assert (data_dir / "assignments.json").exists()
+
+    def test_save_assignments_writes_valid_json(self, mock_ollama_client, temp_dir):
+        """save_assignments() should write valid JSON to assignments.json."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="personal-growth",
+            confidence=0.85,
+            assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+        )
+        generator.assignments = [assignment]
+
+        generator.save_assignments()
+
+        # Should be able to parse the JSON
+        with open(data_dir / "assignments.json") as f:
+            data = json.load(f)
+
+        assert isinstance(data, list)
+
+    def test_save_assignments_serializes_assignment_data_correctly(self, mock_ollama_client, temp_dir):
+        """save_assignments() should serialize all assignment fields correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assignment = ThemeAssignment(
+            item_id="book-456",
+            theme_id="systems-thinking",
+            confidence=0.92,
+            assigned_at=datetime(2026, 1, 20, 14, 30, 0),
+        )
+        generator.assignments = [assignment]
+
+        generator.save_assignments()
+
+        with open(data_dir / "assignments.json") as f:
+            data = json.load(f)
+
+        assert len(data) == 1
+        assert data[0]["item_id"] == "book-456"
+        assert data[0]["theme_id"] == "systems-thinking"
+        assert data[0]["confidence"] == 0.92
+        assert data[0]["assigned_at"] == "2026-01-20T14:30:00"
+
+    def test_save_assignments_saves_multiple_assignments(self, mock_ollama_client, temp_dir):
+        """save_assignments() should save multiple assignments to assignments.json."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assignment1 = ThemeAssignment(
+            item_id="item-123",
+            theme_id="personal-growth",
+            confidence=0.85,
+            assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+        )
+        assignment2 = ThemeAssignment(
+            item_id="item-123",
+            theme_id="technology",
+            confidence=0.45,
+            assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+        )
+        assignment3 = ThemeAssignment(
+            item_id="item-456",
+            theme_id="personal-growth",
+            confidence=0.72,
+            assigned_at=datetime(2026, 1, 16, 11, 0, 0),
+        )
+        generator.assignments = [assignment1, assignment2, assignment3]
+
+        generator.save_assignments()
+
+        with open(data_dir / "assignments.json") as f:
+            data = json.load(f)
+
+        assert len(data) == 3
+        assert data[0]["item_id"] == "item-123"
+        assert data[0]["theme_id"] == "personal-growth"
+        assert data[1]["item_id"] == "item-123"
+        assert data[1]["theme_id"] == "technology"
+        assert data[2]["item_id"] == "item-456"
+
+    def test_save_assignments_overwrites_existing_file(self, mock_ollama_client, temp_dir):
+        """save_assignments() should overwrite existing assignments.json file."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create initial assignments file with old data
+        old_data = [{"item_id": "old-item", "theme_id": "old-theme", "confidence": 0.5}]
+        with open(data_dir / "assignments.json", "w") as f:
+            json.dump(old_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assignment = ThemeAssignment(
+            item_id="new-item",
+            theme_id="new-theme",
+            confidence=0.99,
+            assigned_at=datetime(2026, 1, 26, 12, 0, 0),
+        )
+        generator.assignments = [assignment]
+
+        generator.save_assignments()
+
+        with open(data_dir / "assignments.json") as f:
+            data = json.load(f)
+
+        assert len(data) == 1
+        assert data[0]["item_id"] == "new-item"
+        assert data[0]["theme_id"] == "new-theme"
+
+    def test_save_assignments_empty_list(self, mock_ollama_client, temp_dir):
+        """save_assignments() should save empty list when no assignments exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+        generator.assignments = []
+
+        generator.save_assignments()
+
+        with open(data_dir / "assignments.json") as f:
+            data = json.load(f)
+
+        assert data == []
+
+    def test_save_assignments_uses_indentation_for_readability(self, mock_ollama_client, temp_dir):
+        """save_assignments() should use indentation for human-readable JSON."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="test-theme",
+            confidence=0.75,
+            assigned_at=datetime(2026, 1, 26, 12, 0, 0),
+        )
+        generator.assignments = [assignment]
+
+        generator.save_assignments()
+
+        with open(data_dir / "assignments.json") as f:
+            content = f.read()
+
+        # Check for newlines (indented JSON has newlines)
+        assert "\n" in content
+
+    def test_save_assignments_preserves_float_precision(self, mock_ollama_client, temp_dir):
+        """save_assignments() should preserve confidence score precision."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="test-theme",
+            confidence=0.123456789,
+            assigned_at=datetime(2026, 1, 26, 12, 0, 0),
+        )
+        generator.assignments = [assignment]
+
+        generator.save_assignments()
+
+        with open(data_dir / "assignments.json") as f:
+            data = json.load(f)
+
+        # JSON should preserve float precision
+        assert data[0]["confidence"] == 0.123456789
