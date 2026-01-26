@@ -9,6 +9,8 @@ is added to the knowledge base.
 """
 
 import json
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
@@ -177,3 +179,92 @@ Important:
 - Return only the JSON array, no additional text"""
 
         return prompt
+
+    def _parse_themes_from_response(self, response: str) -> list[Theme]:
+        """Parse LLM response into Theme objects.
+
+        Extracts JSON from the LLM response (handling markdown code blocks
+        and preamble text), parses it, and converts each theme object into
+        a Theme dataclass instance.
+
+        Args:
+            response: The raw LLM response string, potentially containing
+                JSON wrapped in markdown code blocks or with preamble text.
+
+        Returns:
+            List of Theme objects parsed from the response. Returns empty
+            list if parsing fails or no valid themes are found.
+        """
+        if not response or not response.strip():
+            return []
+
+        # Try to extract JSON from markdown code blocks
+        json_str = self._extract_json_from_response(response)
+        if not json_str:
+            return []
+
+        try:
+            themes_data = json.loads(json_str)
+        except json.JSONDecodeError:
+            return []
+
+        if not isinstance(themes_data, list):
+            return []
+
+        themes = []
+        now = datetime.now()
+
+        for theme_data in themes_data:
+            # Skip themes missing required fields
+            if not isinstance(theme_data, dict):
+                continue
+            if "id" not in theme_data or "name" not in theme_data:
+                continue
+
+            theme = Theme(
+                id=theme_data["id"],
+                name=theme_data["name"],
+                description=theme_data.get("description", ""),
+                keywords=theme_data.get("keywords", []),
+                item_count=0,
+                created_at=now,
+                updated_at=now,
+            )
+            themes.append(theme)
+
+        return themes
+
+    def _extract_json_from_response(self, response: str) -> str | None:
+        """Extract JSON array from LLM response.
+
+        Handles responses with markdown code blocks (```json or ```)
+        and extracts the JSON content. Falls back to finding the first
+        [ and last ] in the response if no code blocks are found.
+
+        Args:
+            response: The raw LLM response string.
+
+        Returns:
+            The extracted JSON string, or None if no valid JSON found.
+        """
+        # Try to extract from markdown code blocks first
+        # Handle ```json ... ``` or ``` ... ```
+        code_block_pattern = r"```(?:json)?\s*\n?(.*?)\n?```"
+        matches = re.findall(code_block_pattern, response, re.DOTALL)
+
+        if matches:
+            # Return the first code block that looks like a JSON array
+            for match in matches:
+                stripped = match.strip()
+                if stripped.startswith("["):
+                    return stripped
+
+        # Fall back to finding raw JSON array in the response
+        # Find the first [ and last ]
+        start_idx = response.find("[")
+        end_idx = response.rfind("]")
+
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            return response[start_idx : end_idx + 1]
+
+        return None
