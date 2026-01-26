@@ -212,3 +212,24 @@ class ContentExporter:
             created_at=datetime.now(),
             highlights=highlights,
         )
+
+    def export_all(self) -> list[LibraryItem]:
+        """Export all documents from the knowledge base as LibraryItems.
+
+        Retrieves all documents from the knowledge base via export_knowledge()
+        and converts each one to a LibraryItem using _convert_document().
+
+        Returns:
+            A list of LibraryItem instances, one for each document in the
+            knowledge base. Returns an empty list if the knowledge base is
+            empty. The order of items matches the order of documents from
+            the knowledge base.
+        """
+        # Get all documents from knowledge base
+        export_data = self.knowledge_base.export_knowledge()
+
+        # Extract the documents list
+        documents = export_data.get("documents", [])
+
+        # Convert each document to a LibraryItem
+        return [self._convert_document(doc) for doc in documents]
