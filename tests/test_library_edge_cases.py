@@ -1004,3 +1004,224 @@ class TestSpecialCharacterEscaping:
         # Author value should be escaped
         assert "<script>" not in content
         assert "&lt;script&gt;" in content
+
+
+class TestItemsWithoutSourceUrl:
+    """Tests for items without source_url (Task 179).
+
+    When an item has no source_url, the library should:
+    - Not display the "View Source" button on item detail pages
+    - Still render all other item information correctly
+    - Handle None and empty string source_url values
+    """
+
+    def test_item_page_without_source_url_no_button(self, temp_dir):
+        """Item detail page should not show View Source button when source_url is None."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item without source_url
+        item = LibraryItem(
+            id="no-source-item",
+            content_type=ContentType.BOOK,
+            title="Book Without Source",
+            summary="A book with no source URL",
+            full_content="Full content of the book",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"author": "Test Author"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=["A highlight from the book"],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "no-source-item" / "index.html").read_text()
+
+        # View Source button should NOT be present
+        assert "View Source" not in content
+        # The button link structure should not exist
+        assert 'class="btn btn-primary"' not in content or "View Source" not in content
+
+    def test_item_page_with_source_url_shows_button(self, temp_dir):
+        """Item detail page should show View Source button when source_url exists."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with source_url
+        item = LibraryItem(
+            id="has-source-item",
+            content_type=ContentType.WEB_CONTENT,
+            title="Web Page With Source",
+            summary="A web page with source URL",
+            full_content="Full content",
+            source_url="https://example.com/article",
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "has-source-item" / "index.html").read_text()
+
+        # View Source button SHOULD be present
+        assert "View Source" in content
+        # Link should contain the URL
+        assert "https://example.com/article" in content
+
+    def test_item_page_without_source_url_still_renders_other_content(self, temp_dir):
+        """Item without source_url should still render title, summary, highlights, etc."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        item = LibraryItem(
+            id="full-content-no-source",
+            content_type=ContentType.FRAMEWORK,
+            title="Test Framework",
+            summary="A framework for testing",
+            full_content="Detailed explanation of the framework",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"author": "Framework Author"},
+            themes=["test-theme"],
+            created_at=datetime.now(),
+            highlights=["Key insight from the framework"],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={"test-theme": "Test Theme"})
+
+        content = (output_dir / "item" / "full-content-no-source" / "index.html").read_text()
+
+        # All other content should be present
+        assert "Test Framework" in content
+        assert "A framework for testing" in content
+        assert "Key insight from the framework" in content
+        assert "Framework Author" in content
+
+    def test_item_card_renders_without_source_url(self, temp_dir):
+        """Item cards on all page should render correctly without source_url."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        item = LibraryItem(
+            id="card-no-source",
+            content_type=ContentType.VALUE,
+            title="Core Value",
+            summary="An important value",
+            full_content="Full description",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_all_page(items=[item])
+
+        content = (output_dir / "all" / "index.html").read_text()
+
+        # Card should render correctly
+        assert "Core Value" in content
+        assert "An important value" in content
+        # Link to detail page should exist
+        assert "/item/card-no-source/" in content
+
+    def test_empty_string_source_url_treated_as_no_source(self, temp_dir):
+        """Empty string source_url should be treated the same as None."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with empty string source_url
+        item = LibraryItem(
+            id="empty-source-item",
+            content_type=ContentType.ARTICLE,
+            title="Article With Empty Source",
+            summary="An article",
+            full_content="Content",
+            source_url="",  # Empty string
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "empty-source-item" / "index.html").read_text()
+
+        # View Source button should NOT be present for empty string
+        assert "View Source" not in content
+
+    def test_multiple_items_mixed_source_url_presence(self, temp_dir):
+        """Page with multiple items should correctly show/hide source buttons."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        items = [
+            LibraryItem(
+                id="item-with-source",
+                content_type=ContentType.WEB_CONTENT,
+                title="With Source",
+                summary="Has source",
+                full_content="Content",
+                source_url="https://example.com",
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-without-source",
+                content_type=ContentType.VALUE,
+                title="Without Source",
+                summary="No source",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            ),
+        ]
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=items, themes={})
+
+        # Check item with source
+        content_with = (output_dir / "item" / "item-with-source" / "index.html").read_text()
+        assert "View Source" in content_with
+
+        # Check item without source
+        content_without = (output_dir / "item" / "item-without-source" / "index.html").read_text()
+        assert "View Source" not in content_without
