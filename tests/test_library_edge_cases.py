@@ -1225,3 +1225,331 @@ class TestItemsWithoutSourceUrl:
         # Check item without source
         content_without = (output_dir / "item" / "item-without-source" / "index.html").read_text()
         assert "View Source" not in content_without
+
+
+class TestItemsWithoutHighlights:
+    """Tests for items without highlights (Task 181).
+
+    When an item has no highlights, the library should:
+    - Not display the "Key Highlights" section on item detail pages
+    - Still render all other item information correctly
+    - Handle empty list and None highlights values
+    """
+
+    def test_item_page_without_highlights_no_section(self, temp_dir):
+        """Item detail page should not show highlights section when highlights is empty."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item without highlights (empty list)
+        item = LibraryItem(
+            id="no-highlights-item",
+            content_type=ContentType.BOOK,
+            title="Book Without Highlights",
+            summary="A book with no highlights",
+            full_content="Full content of the book",
+            source_url="https://example.com/book",
+            cover_image_url=None,
+            metadata={"author": "Test Author"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],  # Empty list
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "no-highlights-item" / "index.html").read_text()
+
+        # Highlights section should NOT be present
+        assert "Key Highlights" not in content
+        assert "highlights-section" not in content
+
+    def test_item_page_with_highlights_shows_section(self, temp_dir):
+        """Item detail page should show highlights section when highlights exist."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with highlights
+        item = LibraryItem(
+            id="has-highlights-item",
+            content_type=ContentType.BOOK,
+            title="Book With Highlights",
+            summary="A book with highlights",
+            full_content="Full content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=["First important insight", "Second key takeaway"],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "has-highlights-item" / "index.html").read_text()
+
+        # Highlights section SHOULD be present
+        assert "Key Highlights" in content
+        assert "highlights-section" in content
+        # Highlight text should appear
+        assert "First important insight" in content
+        assert "Second key takeaway" in content
+
+    def test_item_page_without_highlights_still_renders_other_content(self, temp_dir):
+        """Item without highlights should still render title, summary, source, etc."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        item = LibraryItem(
+            id="full-content-no-highlights",
+            content_type=ContentType.FRAMEWORK,
+            title="Test Framework",
+            summary="A framework for testing",
+            full_content="Detailed explanation of the framework",
+            source_url="https://example.com/framework",
+            cover_image_url=None,
+            metadata={"author": "Framework Author"},
+            themes=["test-theme"],
+            created_at=datetime.now(),
+            highlights=[],  # No highlights
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={"test-theme": "Test Theme"})
+
+        content = (output_dir / "item" / "full-content-no-highlights" / "index.html").read_text()
+
+        # All other content should be present
+        assert "Test Framework" in content
+        assert "A framework for testing" in content
+        assert "View Source" in content
+        assert "Framework Author" in content
+
+    def test_single_highlight_shows_section(self, temp_dir):
+        """Item with a single highlight should still show highlights section."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        item = LibraryItem(
+            id="single-highlight-item",
+            content_type=ContentType.INSIGHT,
+            title="Single Insight",
+            summary="An insight with one highlight",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=["The only important takeaway"],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "single-highlight-item" / "index.html").read_text()
+
+        # Highlights section should be present with single highlight
+        assert "Key Highlights" in content
+        assert "The only important takeaway" in content
+
+    def test_multiple_items_mixed_highlights_presence(self, temp_dir):
+        """Page with multiple items should correctly show/hide highlights sections."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        items = [
+            LibraryItem(
+                id="item-with-highlights",
+                content_type=ContentType.BOOK,
+                title="With Highlights",
+                summary="Has highlights",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=["Important point 1", "Important point 2"],
+            ),
+            LibraryItem(
+                id="item-without-highlights",
+                content_type=ContentType.VALUE,
+                title="Without Highlights",
+                summary="No highlights",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            ),
+        ]
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=items, themes={})
+
+        # Check item with highlights
+        content_with = (output_dir / "item" / "item-with-highlights" / "index.html").read_text()
+        assert "Key Highlights" in content_with
+        assert "Important point 1" in content_with
+
+        # Check item without highlights
+        content_without = (output_dir / "item" / "item-without-highlights" / "index.html").read_text()
+        assert "Key Highlights" not in content_without
+        assert "highlights-section" not in content_without
+
+    def test_highlights_with_special_characters_escaped(self, temp_dir):
+        """Highlights with special characters should be properly escaped."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        item = LibraryItem(
+            id="special-char-highlights",
+            content_type=ContentType.BOOK,
+            title="Book with Special Chars",
+            summary="Summary",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[
+                "Highlight with <script>alert('XSS')</script> attack",
+                "Highlight with & ampersand",
+                "Highlight with 'quotes' and \"double quotes\"",
+            ],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "special-char-highlights" / "index.html").read_text()
+
+        # Highlights should be present
+        assert "Key Highlights" in content
+        # HTML should be escaped
+        assert "<script>" not in content
+        assert "&lt;script&gt;" in content
+        # Ampersand should be escaped
+        assert "&amp;" in content
+
+    def test_highlight_styling_applied(self, temp_dir):
+        """Highlights should have proper CSS styling classes."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        item = LibraryItem(
+            id="styled-highlights-item",
+            content_type=ContentType.BOOK,
+            title="Book",
+            summary="Summary",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=["A styled highlight"],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "styled-highlights-item" / "index.html").read_text()
+
+        # Should have highlight styling class
+        assert "highlight" in content
+        # Should be in a blockquote or similar styled element
+        assert "blockquote" in content.lower() or "highlight" in content
+
+    def test_many_highlights_all_rendered(self, temp_dir):
+        """All highlights should be rendered even if there are many."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        many_highlights = [f"Highlight number {i}" for i in range(10)]
+        item = LibraryItem(
+            id="many-highlights-item",
+            content_type=ContentType.BOOK,
+            title="Book with Many Highlights",
+            summary="Summary",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=many_highlights,
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "many-highlights-item" / "index.html").read_text()
+
+        # All 10 highlights should be present
+        for i in range(10):
+            assert f"Highlight number {i}" in content
+
+    def test_highlight_with_newlines_handled(self, temp_dir):
+        """Highlights with newlines should not break HTML structure."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        item = LibraryItem(
+            id="newline-highlight-item",
+            content_type=ContentType.BOOK,
+            title="Book",
+            summary="Summary",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[
+                "First line\nSecond line\nThird line",
+            ],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "newline-highlight-item" / "index.html").read_text()
+
+        # Content should be present
+        assert "First line" in content
+        # Page should still have valid structure
+        assert "Key Highlights" in content
