@@ -4343,3 +4343,736 @@ class TestAssignItemsToThemes:
         # Should return empty list for invalid response
         assert result == []
         assert generator.assignments == []
+
+
+class TestUpdateAssignments:
+    """Tests for update_assignments() method that incrementally updates theme assignments for new items."""
+
+    def test_update_assignments_only_assigns_new_items(self, mock_ollama_client, temp_dir):
+        """update_assignments() should only assign items that don't have existing assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement and learning",
+                keywords=["growth", "learning"],
+                item_count=1,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Software and tech innovations",
+                keywords=["software", "tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up existing assignments for item-1
+        existing_assignment = ThemeAssignment(
+            item_id="item-1",
+            theme_id="personal-growth",
+            confidence=0.85,
+            assigned_at=datetime(2026, 1, 20, 10, 0, 0),
+        )
+        generator.assignments = [existing_assignment]
+
+        # Set up items - item-1 already has assignment, item-2 is new
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Existing Book",
+                summary="A book that already has assignments",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.ARTICLE,
+                title="New Article",
+                summary="A new article without assignments",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 25, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Mock the LLM response - should only be for item-2
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-2",
+                "theme_id": "technology",
+                "confidence": 0.90
+            }
+        ]'''
+
+        result = generator.update_assignments(items)
+
+        # Should have the original assignment plus the new one
+        assert len(generator.assignments) == 2
+
+        # Original assignment should be preserved
+        item1_assignments = [a for a in generator.assignments if a.item_id == "item-1"]
+        assert len(item1_assignments) == 1
+        assert item1_assignments[0].confidence == 0.85
+
+        # New assignment should be added
+        item2_assignments = [a for a in generator.assignments if a.item_id == "item-2"]
+        assert len(item2_assignments) == 1
+        assert item2_assignments[0].theme_id == "technology"
+
+    def test_update_assignments_returns_only_new_assignments(self, mock_ollama_client, temp_dir):
+        """update_assignments() should return only the newly created assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up existing assignment
+        existing_assignment = ThemeAssignment(
+            item_id="item-1",
+            theme_id="technology",
+            confidence=0.80,
+            assigned_at=datetime(2026, 1, 20, 10, 0, 0),
+        )
+        generator.assignments = [existing_assignment]
+
+        # Set up items - only item-2 is new
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Existing Book",
+                summary="Already assigned",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.ARTICLE,
+                title="New Article",
+                summary="Not yet assigned",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 25, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Mock LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-2",
+                "theme_id": "technology",
+                "confidence": 0.75
+            }
+        ]'''
+
+        result = generator.update_assignments(items)
+
+        # Return value should only contain new assignments
+        assert len(result) == 1
+        assert result[0].item_id == "item-2"
+
+    def test_update_assignments_calls_ollama_only_for_new_items(self, mock_ollama_client, temp_dir):
+        """update_assignments() should only call OllamaClient with new items."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="business",
+                name="Business",
+                description="Business topics",
+                keywords=["business"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up existing assignment for item-1
+        existing_assignment = ThemeAssignment(
+            item_id="item-1",
+            theme_id="business",
+            confidence=0.90,
+            assigned_at=datetime(2026, 1, 20, 10, 0, 0),
+        )
+        generator.assignments = [existing_assignment]
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.VALUE,
+                title="Existing Value",
+                summary="Already assigned",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.FRAMEWORK,
+                title="New Framework",
+                summary="A new framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 25, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Mock LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-2",
+                "theme_id": "business",
+                "confidence": 0.70
+            }
+        ]'''
+
+        generator.update_assignments(items)
+
+        # Verify generate was called
+        mock_ollama_client.generate.assert_called_once()
+
+        # Check that the prompt only includes item-2 (not item-1)
+        call_kwargs = mock_ollama_client.generate.call_args[1]
+        prompt = call_kwargs["prompt"]
+        assert "item-2" in prompt
+        assert "New Framework" in prompt
+        # item-1 should not be in the prompt since it already has assignments
+        assert "item-1" not in prompt
+        assert "Existing Value" not in prompt
+
+    def test_update_assignments_does_not_call_ollama_when_no_new_items(self, mock_ollama_client, temp_dir):
+        """update_assignments() should not call OllamaClient when all items already have assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up existing assignment
+        existing_assignment = ThemeAssignment(
+            item_id="item-1",
+            theme_id="technology",
+            confidence=0.85,
+            assigned_at=datetime(2026, 1, 20, 10, 0, 0),
+        )
+        generator.assignments = [existing_assignment]
+
+        # Only item-1 which already has assignment
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.ARTICLE,
+                title="Existing Article",
+                summary="Already assigned",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        result = generator.update_assignments(items)
+
+        # Should not call LLM
+        mock_ollama_client.generate.assert_not_called()
+
+        # Should return empty list (no new assignments)
+        assert result == []
+
+        # Original assignment should still be there
+        assert len(generator.assignments) == 1
+
+    def test_update_assignments_saves_to_disk(self, mock_ollama_client, temp_dir):
+        """update_assignments() should save all assignments (old and new) to disk."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up existing assignment
+        existing_assignment = ThemeAssignment(
+            item_id="item-1",
+            theme_id="personal-growth",
+            confidence=0.80,
+            assigned_at=datetime(2026, 1, 20, 10, 0, 0),
+        )
+        generator.assignments = [existing_assignment]
+
+        # New item
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Existing Book",
+                summary="Already assigned",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.INSIGHT,
+                title="New Insight",
+                summary="A new insight",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 25, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Mock LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-2",
+                "theme_id": "personal-growth",
+                "confidence": 0.75
+            }
+        ]'''
+
+        generator.update_assignments(items)
+
+        # Check file was created/updated
+        assert (data_dir / "assignments.json").exists()
+
+        # Check file contains both old and new assignments
+        with open(data_dir / "assignments.json") as f:
+            data = json.load(f)
+
+        assert len(data) == 2
+        item_ids = [a["item_id"] for a in data]
+        assert "item-1" in item_ids
+        assert "item-2" in item_ids
+
+    def test_update_assignments_preserves_existing_assignment_details(self, mock_ollama_client, temp_dir):
+        """update_assignments() should preserve all details of existing assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up existing assignment with specific timestamp and confidence
+        original_timestamp = datetime(2026, 1, 10, 8, 30, 45)
+        existing_assignment = ThemeAssignment(
+            item_id="item-1",
+            theme_id="technology",
+            confidence=0.92,
+            assigned_at=original_timestamp,
+        )
+        generator.assignments = [existing_assignment]
+
+        # New item
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.ARTICLE,
+                title="Existing Article",
+                summary="Already assigned",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 5, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.BOOK,
+                title="New Book",
+                summary="A new book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 25, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Mock LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-2",
+                "theme_id": "technology",
+                "confidence": 0.65
+            }
+        ]'''
+
+        generator.update_assignments(items)
+
+        # Find the original assignment
+        item1_assignments = [a for a in generator.assignments if a.item_id == "item-1"]
+        assert len(item1_assignments) == 1
+
+        # All original details should be preserved
+        assert item1_assignments[0].theme_id == "technology"
+        assert item1_assignments[0].confidence == 0.92
+        assert item1_assignments[0].assigned_at == original_timestamp
+
+    def test_update_assignments_handles_multiple_new_items(self, mock_ollama_client, temp_dir):
+        """update_assignments() should correctly handle multiple new items at once."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Start with no existing assignments
+        generator.assignments = []
+
+        # Multiple new items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Python Handbook",
+                summary="Learn Python programming",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 20, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.VALUE,
+                title="Growth Mindset",
+                summary="Embrace continuous learning",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 21, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-3",
+                content_type=ContentType.ARTICLE,
+                title="AI Trends 2026",
+                summary="Latest AI developments",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 22, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Mock LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "technology",
+                "confidence": 0.88
+            },
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.55
+            },
+            {
+                "item_id": "item-2",
+                "theme_id": "personal-growth",
+                "confidence": 0.95
+            },
+            {
+                "item_id": "item-3",
+                "theme_id": "technology",
+                "confidence": 0.92
+            }
+        ]'''
+
+        result = generator.update_assignments(items)
+
+        # Should have 4 assignments total
+        assert len(result) == 4
+        assert len(generator.assignments) == 4
+
+        # Check specific assignments
+        item1_assignments = [a for a in result if a.item_id == "item-1"]
+        assert len(item1_assignments) == 2
+
+        item2_assignments = [a for a in result if a.item_id == "item-2"]
+        assert len(item2_assignments) == 1
+        assert item2_assignments[0].theme_id == "personal-growth"
+
+    def test_update_assignments_returns_empty_list_when_no_themes(self, mock_ollama_client, temp_dir):
+        """update_assignments() should return empty list when no themes exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # No themes
+        generator.themes = []
+        generator.assignments = []
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.MEMORY,
+                title="Test Memory",
+                summary="A test memory",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 25, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        result = generator.update_assignments(items)
+
+        assert result == []
+        mock_ollama_client.generate.assert_not_called()
+
+    def test_update_assignments_returns_empty_list_when_empty_items(self, mock_ollama_client, temp_dir):
+        """update_assignments() should return empty list when given empty items list."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+        generator.assignments = []
+
+        result = generator.update_assignments([])
+
+        assert result == []
+        mock_ollama_client.generate.assert_not_called()
+
+    def test_update_assignments_identifies_new_items_by_assignment_not_presence(self, mock_ollama_client, temp_dir):
+        """update_assignments() should consider an item 'new' if it has no assignments, not based on created_at."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Existing assignment only for item-2 (even though item-1 was created first)
+        existing_assignment = ThemeAssignment(
+            item_id="item-2",
+            theme_id="technology",
+            confidence=0.85,
+            assigned_at=datetime(2026, 1, 20, 10, 0, 0),
+        )
+        generator.assignments = [existing_assignment]
+
+        # item-1 was created first but has no assignments
+        # item-2 was created later but already has an assignment
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Old Unassigned Book",
+                summary="Created first but never assigned",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 1, 10, 0, 0),  # Created earlier
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.ARTICLE,
+                title="Newer Assigned Article",
+                summary="Created later but already assigned",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),  # Created later
+                highlights=[],
+            ),
+        ]
+
+        # Mock LLM response - should only be asked about item-1
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "technology",
+                "confidence": 0.70
+            }
+        ]'''
+
+        result = generator.update_assignments(items)
+
+        # Should return assignment only for item-1
+        assert len(result) == 1
+        assert result[0].item_id == "item-1"
+
+        # Prompt should only contain item-1
+        call_kwargs = mock_ollama_client.generate.call_args[1]
+        prompt = call_kwargs["prompt"]
+        assert "item-1" in prompt
+        assert "Old Unassigned Book" in prompt
+        assert "item-2" not in prompt
