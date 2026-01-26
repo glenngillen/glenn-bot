@@ -350,6 +350,62 @@ Important:
 
         return prompt
 
+    def _parse_assignments_from_response(self, response: str) -> list[ThemeAssignment]:
+        """Parse LLM response into ThemeAssignment objects.
+
+        Extracts JSON from the LLM response (handling markdown code blocks
+        and preamble text), parses it, and converts each assignment object into
+        a ThemeAssignment dataclass instance.
+
+        Args:
+            response: The raw LLM response string, potentially containing
+                JSON wrapped in markdown code blocks or with preamble text.
+
+        Returns:
+            List of ThemeAssignment objects parsed from the response. Returns
+            empty list if parsing fails or no valid assignments are found.
+        """
+        if not response or not response.strip():
+            return []
+
+        # Try to extract JSON from markdown code blocks
+        json_str = self._extract_json_from_response(response)
+        if not json_str:
+            return []
+
+        try:
+            assignments_data = json.loads(json_str)
+        except json.JSONDecodeError:
+            return []
+
+        if not isinstance(assignments_data, list):
+            return []
+
+        assignments = []
+        now = datetime.now()
+
+        for assignment_data in assignments_data:
+            # Skip non-dict entries
+            if not isinstance(assignment_data, dict):
+                continue
+            # Skip assignments missing required fields
+            if "item_id" not in assignment_data:
+                continue
+            if "theme_id" not in assignment_data:
+                continue
+            if "confidence" not in assignment_data:
+                continue
+
+            assignment = ThemeAssignment(
+                item_id=assignment_data["item_id"],
+                theme_id=assignment_data["theme_id"],
+                confidence=float(assignment_data["confidence"]),
+                assigned_at=now,
+            )
+            assignments.append(assignment)
+
+        return assignments
+
     def generate_themes(self, items: list[LibraryItem]) -> list[Theme]:
         """Generate themes from library items using AI.
 
