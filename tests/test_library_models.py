@@ -990,3 +990,316 @@ class TestThemeSerialization:
         assert result.keywords == ["first", "second", "third", "fourth"]
         assert result.keywords[0] == "first"
         assert result.keywords[-1] == "fourth"
+
+
+class TestThemeAssignment:
+    """Tests for the ThemeAssignment dataclass."""
+
+    def test_theme_assignment_has_required_fields(self):
+        """ThemeAssignment should have all required fields."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.85,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert assignment.item_id == "item-123"
+        assert assignment.theme_id == "systems-thinking"
+        assert assignment.confidence == 0.85
+        assert assignment.assigned_at == datetime(2024, 1, 15, 10, 30, 0)
+
+    def test_theme_assignment_item_id_is_string(self):
+        """ThemeAssignment item_id should be a string."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-abc-123",
+            theme_id="personal-growth",
+            confidence=0.7,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert isinstance(assignment.item_id, str)
+
+    def test_theme_assignment_theme_id_is_string(self):
+        """ThemeAssignment theme_id should be a string."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="personal-growth",
+            confidence=0.7,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert isinstance(assignment.theme_id, str)
+
+    def test_theme_assignment_confidence_is_float(self):
+        """ThemeAssignment confidence should be a float."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.95,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert isinstance(assignment.confidence, float)
+
+    def test_theme_assignment_confidence_can_be_zero(self):
+        """ThemeAssignment confidence can be 0.0 (minimum)."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="miscellaneous",
+            confidence=0.0,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert assignment.confidence == 0.0
+
+    def test_theme_assignment_confidence_can_be_one(self):
+        """ThemeAssignment confidence can be 1.0 (maximum)."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="perfect-match",
+            confidence=1.0,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert assignment.confidence == 1.0
+
+    def test_theme_assignment_confidence_can_be_fractional(self):
+        """ThemeAssignment confidence should support fractional values."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="test-theme",
+            confidence=0.333,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert assignment.confidence == 0.333
+
+    def test_theme_assignment_assigned_at_is_datetime(self):
+        """ThemeAssignment assigned_at should be a datetime."""
+        from src.library.models import ThemeAssignment
+
+        now = datetime(2024, 1, 15, 10, 30, 0)
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="test-theme",
+            confidence=0.5,
+            assigned_at=now,
+        )
+
+        assert isinstance(assignment.assigned_at, datetime)
+        assert assignment.assigned_at == now
+
+    def test_theme_assignment_is_dataclass(self):
+        """ThemeAssignment should be a dataclass."""
+        from dataclasses import is_dataclass
+        from src.library.models import ThemeAssignment
+
+        assert is_dataclass(ThemeAssignment)
+
+
+class TestThemeAssignmentSerialization:
+    """Tests for ThemeAssignment serialization methods (to_dict and from_dict)."""
+
+    def test_to_dict_returns_dictionary(self):
+        """to_dict should return a dictionary."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.85,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+        assert isinstance(result, dict)
+
+    def test_to_dict_serializes_all_fields(self):
+        """to_dict should include all ThemeAssignment fields."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.85,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+
+        assert result["item_id"] == "item-123"
+        assert result["theme_id"] == "systems-thinking"
+        assert result["confidence"] == 0.85
+
+    def test_to_dict_serializes_assigned_at_as_iso_string(self):
+        """to_dict should convert assigned_at datetime to ISO format string."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="test-theme",
+            confidence=0.5,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+
+        assert result["assigned_at"] == "2024-01-15T10:30:00"
+        assert isinstance(result["assigned_at"], str)
+
+    def test_to_dict_preserves_zero_confidence(self):
+        """to_dict should preserve confidence of zero."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="miscellaneous",
+            confidence=0.0,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+
+        assert result["confidence"] == 0.0
+
+    def test_to_dict_preserves_one_confidence(self):
+        """to_dict should preserve confidence of 1.0."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="perfect-match",
+            confidence=1.0,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+
+        assert result["confidence"] == 1.0
+
+    def test_from_dict_returns_theme_assignment(self):
+        """from_dict should return a ThemeAssignment instance."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "systems-thinking",
+            "confidence": 0.85,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert isinstance(result, ThemeAssignment)
+
+    def test_from_dict_deserializes_all_fields(self):
+        """from_dict should correctly set all ThemeAssignment fields."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "systems-thinking",
+            "confidence": 0.85,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.item_id == "item-123"
+        assert result.theme_id == "systems-thinking"
+        assert result.confidence == 0.85
+
+    def test_from_dict_deserializes_assigned_at_from_iso_string(self):
+        """from_dict should convert assigned_at ISO string to datetime."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "test-theme",
+            "confidence": 0.5,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.assigned_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert isinstance(result.assigned_at, datetime)
+
+    def test_from_dict_handles_zero_confidence(self):
+        """from_dict should correctly handle confidence of zero."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "miscellaneous",
+            "confidence": 0.0,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.confidence == 0.0
+
+    def test_from_dict_handles_one_confidence(self):
+        """from_dict should correctly handle confidence of 1.0."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "perfect-match",
+            "confidence": 1.0,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.confidence == 1.0
+
+    def test_roundtrip_to_dict_from_dict(self):
+        """Converting to_dict then from_dict should produce equivalent object."""
+        from src.library.models import ThemeAssignment
+
+        original = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.85,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        data = original.to_dict()
+        reconstructed = ThemeAssignment.from_dict(data)
+
+        assert reconstructed.item_id == original.item_id
+        assert reconstructed.theme_id == original.theme_id
+        assert reconstructed.confidence == original.confidence
+        assert reconstructed.assigned_at == original.assigned_at
+
+    def test_from_dict_handles_fractional_confidence(self):
+        """from_dict should correctly handle fractional confidence values."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "test-theme",
+            "confidence": 0.333,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.confidence == 0.333
