@@ -184,7 +184,7 @@ data/library-site/         # Generated site
 - [x] 79. Implement resolve_cover() with fallback chain
 - [x] 80. Write tests for resolve_all_covers() batch processing
 - [x] 81. Implement resolve_all_covers() method
-- [ ] 82. Write tests for API error handling with exponential backoff
+- [x] 82. Write tests for API error handling with exponential backoff
 - [ ] 83. Implement exponential backoff and graceful degradation
 
 ### Phase 6: Search Index Generation (11 tasks)
