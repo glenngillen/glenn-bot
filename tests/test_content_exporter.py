@@ -780,3 +780,401 @@ class TestExtractHighlights:
         assert len(result) == 4
         assert "Step one" in result
         assert "Step two" in result
+
+
+class TestConvertDocument:
+    """Tests for _convert_document() transforming ChromaDB doc to LibraryItem."""
+
+    def test_convert_document_returns_library_item(self, mock_knowledge_base):
+        """_convert_document should return a LibraryItem instance."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import LibraryItem
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-123",
+            "content": "This is the document content.",
+            "metadata": {"type": "value", "name": "My Value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert isinstance(result, LibraryItem)
+
+    def test_convert_document_sets_id_from_document(self, mock_knowledge_base):
+        """LibraryItem id should come from document id."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "unique-doc-id-456",
+            "content": "Content here.",
+            "metadata": {"type": "framework"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.id == "unique-doc-id-456"
+
+    def test_convert_document_sets_content_type_from_metadata(self, mock_knowledge_base):
+        """LibraryItem content_type should be inferred from metadata type."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Framework content.",
+            "metadata": {"type": "framework"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.content_type == ContentType.FRAMEWORK
+
+    def test_convert_document_sets_title_from_metadata_name(self, mock_knowledge_base):
+        """LibraryItem title should use metadata name when available."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Some longer content that could be used as title.",
+            "metadata": {"type": "value", "name": "Custom Title"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.title == "Custom Title"
+
+    def test_convert_document_generates_title_from_content(self, mock_knowledge_base):
+        """LibraryItem title should be generated from content if no name."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Short content for title",
+            "metadata": {"type": "memory"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.title == "Short content for title"
+
+    def test_convert_document_sets_summary_from_content(self, mock_knowledge_base):
+        """LibraryItem summary should be generated from content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "This is the full content of the document.",
+            "metadata": {"type": "value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.summary == "This is the full content of the document."
+
+    def test_convert_document_truncates_long_summary(self, mock_knowledge_base):
+        """Summary should be truncated to 200 characters with ellipsis."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        long_content = "A" * 250
+        document = {
+            "id": "doc-1",
+            "content": long_content,
+            "metadata": {"type": "value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert len(result.summary) == 203  # 200 + "..."
+        assert result.summary.endswith("...")
+
+    def test_convert_document_sets_full_content(self, mock_knowledge_base):
+        """LibraryItem full_content should contain the complete document content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        long_content = "A" * 500
+        document = {
+            "id": "doc-1",
+            "content": long_content,
+            "metadata": {"type": "value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.full_content == long_content
+
+    def test_convert_document_sets_source_url_from_metadata(self, mock_knowledge_base):
+        """LibraryItem source_url should come from metadata source field."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Web content.",
+            "metadata": {"type": "web", "source": "https://example.com/article"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.source_url == "https://example.com/article"
+
+    def test_convert_document_sets_source_url_none_when_missing(
+        self, mock_knowledge_base
+    ):
+        """LibraryItem source_url should be None when metadata lacks source."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Value content.",
+            "metadata": {"type": "value", "name": "My Value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.source_url is None
+
+    def test_convert_document_sets_cover_image_url_to_none(self, mock_knowledge_base):
+        """LibraryItem cover_image_url should be None (resolved later)."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Content.",
+            "metadata": {"type": "book", "title": "Some Book"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.cover_image_url is None
+
+    def test_convert_document_preserves_metadata(self, mock_knowledge_base):
+        """LibraryItem metadata should contain the original document metadata."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        original_metadata = {
+            "type": "framework",
+            "name": "Problem Solving",
+            "steps": ["Step 1", "Step 2"],
+            "category": "productivity",
+        }
+        document = {
+            "id": "doc-1",
+            "content": "Framework content.",
+            "metadata": original_metadata,
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.metadata == original_metadata
+
+    def test_convert_document_sets_themes_to_empty_list(self, mock_knowledge_base):
+        """LibraryItem themes should be empty list (assigned later)."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Content.",
+            "metadata": {"type": "value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.themes == []
+
+    def test_convert_document_sets_created_at_to_datetime(self, mock_knowledge_base):
+        """LibraryItem created_at should be set to a datetime."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Content.",
+            "metadata": {"type": "value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert isinstance(result.created_at, datetime)
+
+    def test_convert_document_extracts_highlights_for_value(self, mock_knowledge_base):
+        """LibraryItem highlights should contain key_points for values."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Value content.",
+            "metadata": {
+                "type": "value",
+                "key_points": ["Point 1", "Point 2", "Point 3"],
+            },
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.highlights == ["Point 1", "Point 2", "Point 3"]
+
+    def test_convert_document_extracts_highlights_for_framework(
+        self, mock_knowledge_base
+    ):
+        """LibraryItem highlights should contain steps for frameworks."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Framework content.",
+            "metadata": {
+                "type": "framework",
+                "steps": ["Define", "Analyze", "Execute"],
+            },
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.highlights == ["Define", "Analyze", "Execute"]
+
+    def test_convert_document_empty_highlights_for_memory(self, mock_knowledge_base):
+        """LibraryItem highlights should be empty for memory type."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Memory content.",
+            "metadata": {"type": "memory"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.highlights == []
+
+    def test_convert_document_handles_missing_metadata(self, mock_knowledge_base):
+        """_convert_document should handle document with no metadata."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Content without metadata.",
+            "metadata": {},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.id == "doc-1"
+        assert result.content_type == ContentType.WEB_CONTENT  # Default
+        assert result.title == "Content without metadata."
+        assert result.metadata == {}
+
+    def test_convert_document_handles_none_metadata(self, mock_knowledge_base):
+        """_convert_document should handle document with None metadata."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "Content with None metadata.",
+            "metadata": None,
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.id == "doc-1"
+        assert result.content_type == ContentType.WEB_CONTENT
+        assert result.title == "Content with None metadata."
+        assert result.metadata == {}
+
+    def test_convert_document_handles_empty_content(self, mock_knowledge_base):
+        """_convert_document should handle document with empty content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": "",
+            "metadata": {"type": "value", "name": "Named Value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.id == "doc-1"
+        assert result.title == "Named Value"
+        assert result.summary == ""
+        assert result.full_content == ""
+
+    def test_convert_document_handles_none_content(self, mock_knowledge_base):
+        """_convert_document should handle document with None content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "doc-1",
+            "content": None,
+            "metadata": {"type": "value", "name": "Named Value"},
+        }
+
+        result = exporter._convert_document(document)
+
+        assert result.id == "doc-1"
+        assert result.title == "Named Value"
+        assert result.summary == ""
+        assert result.full_content == ""
+
+    def test_convert_document_complete_transformation(self, mock_knowledge_base):
+        """Full integration test of document to LibraryItem transformation."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType, LibraryItem
+
+        exporter = ContentExporter(mock_knowledge_base)
+        document = {
+            "id": "value-001",
+            "content": "Always be curious and ask questions to understand perspectives.",
+            "metadata": {
+                "type": "value",
+                "name": "Curiosity",
+                "source": "https://example.com/values",
+                "key_points": [
+                    "Ask questions without assumption",
+                    "Seek to understand before judging",
+                ],
+            },
+        }
+
+        result = exporter._convert_document(document)
+
+        assert isinstance(result, LibraryItem)
+        assert result.id == "value-001"
+        assert result.content_type == ContentType.VALUE
+        assert result.title == "Curiosity"
+        assert (
+            result.summary
+            == "Always be curious and ask questions to understand perspectives."
+        )
+        assert (
+            result.full_content
+            == "Always be curious and ask questions to understand perspectives."
+        )
+        assert result.source_url == "https://example.com/values"
+        assert result.cover_image_url is None
+        assert result.metadata == document["metadata"]
+        assert result.themes == []
+        assert isinstance(result.created_at, datetime)
+        assert result.highlights == [
+            "Ask questions without assumption",
+            "Seek to understand before judging",
+        ]
