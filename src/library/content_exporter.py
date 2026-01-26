@@ -6,9 +6,10 @@ documents into LibraryItem instances suitable for display in the static
 website library.
 """
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from src.library.models import ContentType
+from src.library.models import ContentType, LibraryItem
 
 if TYPE_CHECKING:
     from src.knowledge_base import KnowledgeBase
@@ -166,3 +167,48 @@ class ContentExporter:
 
         # Convert all items to strings
         return [str(item) for item in items]
+
+    def _convert_document(self, document: dict[str, Any]) -> LibraryItem:
+        """Convert a ChromaDB document to a LibraryItem.
+
+        Transforms a raw document from the knowledge base into a LibraryItem
+        instance with all required fields for display in the browsable library.
+
+        Args:
+            document: A dictionary with 'id', 'content', and 'metadata' keys
+                from ChromaDB.
+
+        Returns:
+            A LibraryItem instance with all fields populated.
+        """
+        doc_id = document.get("id", "")
+        content = document.get("content") or ""
+        metadata = document.get("metadata") or {}
+
+        # Infer content type from metadata
+        type_string = metadata.get("type") if metadata else None
+        content_type = self._infer_content_type(type_string)
+
+        # Generate title and summary
+        title = self._generate_title(metadata, content)
+        summary = self._generate_summary(content)
+
+        # Extract source URL from metadata
+        source_url = metadata.get("source") if metadata else None
+
+        # Extract highlights based on content type
+        highlights = self._extract_highlights(metadata, content_type)
+
+        return LibraryItem(
+            id=doc_id,
+            content_type=content_type,
+            title=title,
+            summary=summary,
+            full_content=content,
+            source_url=source_url,
+            cover_image_url=None,  # Resolved later by CoverResolver
+            metadata=metadata,
+            themes=[],  # Assigned later by ThemeGenerator
+            created_at=datetime.now(),
+            highlights=highlights,
+        )
