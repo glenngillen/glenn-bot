@@ -278,7 +278,7 @@ data/library-site/         # Generated site
 - [x] 152. Create test file `tests/test_library_server.py`
 - [x] 153. Write tests for LibraryServer initialization
 - [x] 154. Implement LibraryServer class in `src/library/server.py`
-- [ ] 155. Write tests for serve() starting HTTP server
+- [x] 155. Write tests for serve() starting HTTP server
 - [ ] 156. Implement serve() using http.server
 - [ ] 157. Write tests for port-in-use handling
 - [ ] 158. Implement port fallback logic
