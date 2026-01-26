@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from typing import Optional
@@ -13,6 +14,8 @@ from src.memory_system import MemorySystem, MemoryType
 from src.quotes_system import QuotesSystem
 from src.feedback_system import FeedbackManager, FeedbackType
 from src.context_detector import ContextDetector
+from src.library.builder import LibraryBuilder
+from src.library.server import LibraryServer
 
 # Configure logging
 logging.basicConfig(
@@ -261,6 +264,16 @@ class GlennBot:
         elif command.startswith("/auto-context threshold "):
             value_str = command[24:].strip()
             self._set_auto_context_threshold(value_str)
+
+        # Library commands
+        elif command == "/build-library" or command.startswith("/build-library "):
+            self._build_library(command)
+
+        elif command == "/serve-library":
+            self._serve_library()
+
+        elif command == "/library-status":
+            self._show_library_status()
 
         else:
             self.ui.display_error(f"Unknown command: {command}")
@@ -1521,6 +1534,95 @@ class GlennBot:
         except Exception as e:
             logger.error(f"Error importing knowledge: {e}")
             self.ui.display_error(f"Failed to import knowledge: {e}")
+
+    def _build_library(self, command: str):
+        """Build the static library site.
+
+        Args:
+            command: The full command string, may include --force and/or --serve flags.
+        """
+        try:
+            # Parse flags
+            force = "--force" in command
+            serve = "--serve" in command
+
+            self.ui.console.print("[cyan]Building library site...[/cyan]")
+
+            with self.ui.show_thinking_indicator():
+                builder = LibraryBuilder(
+                    self.knowledge_base,
+                    self.ollama_client,
+                    settings.library_data_dir,
+                    settings.library_site_dir,
+                )
+                result = builder.build(force=force)
+
+            # Display success message
+            self.ui.console.print(f"[green]Library build complete![/green]")
+            self.ui.console.print(f"  Items: {result['items_count']}")
+            self.ui.console.print(f"  Themes: {result['themes_count']}")
+            self.ui.console.print(f"  Pages generated: {result['pages_generated']}")
+            self.ui.console.print(f"[dim]  Built at: {result['last_build']}[/dim]")
+
+            # Start server if requested
+            if serve:
+                self._serve_library()
+
+        except Exception as e:
+            logger.error(f"Error building library: {e}")
+            self.ui.display_error(f"Failed to build library: {e}")
+
+    def _serve_library(self):
+        """Start the local HTTP server to serve the library site."""
+        try:
+            server = LibraryServer(
+                settings.library_site_dir,
+                settings.library_server_port,
+            )
+            url = server.serve(blocking=False, auto_port=True)
+
+            self.ui.console.print(f"[green]Library server started![/green]")
+            self.ui.console.print(f"  URL: [link={url}]{url}[/link]")
+            self.ui.console.print(f"[dim]  Press Ctrl+C in the browser terminal to stop[/dim]")
+
+        except ValueError as e:
+            logger.error(f"Error starting library server: {e}")
+            self.ui.display_error(f"Failed to start library server: {e}")
+            self.ui.console.print("[dim]Run /build-library first to generate the site[/dim]")
+        except OSError as e:
+            logger.error(f"Error starting library server: {e}")
+            self.ui.display_error(f"Failed to start library server: {e}")
+
+    def _show_library_status(self):
+        """Show the status of the library build."""
+        try:
+            build_state_file = settings.library_site_dir / "_build_state.json"
+
+            if not build_state_file.exists():
+                self.ui.console.print("[yellow]Library has not been built yet.[/yellow]")
+                self.ui.console.print("[dim]Run /build-library to generate the site[/dim]")
+                return
+
+            with open(build_state_file, "r") as f:
+                state = json.load(f)
+
+            from rich.table import Table
+            table = Table(title="Library Build Status")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+
+            table.add_row("Last Build", state.get("last_build", "Unknown"))
+            table.add_row("Items", str(len(state.get("item_hashes", {}))))
+            table.add_row("Theme Version", state.get("theme_version", "Unknown"))
+            table.add_row("Site Directory", str(settings.library_site_dir))
+
+            self.ui.console.print(table)
+
+        except json.JSONDecodeError:
+            self.ui.display_error("Build state file is corrupted")
+        except Exception as e:
+            logger.error(f"Error showing library status: {e}")
+            self.ui.display_error(f"Failed to show library status: {e}")
 
     def run(self):
         """Main application loop."""

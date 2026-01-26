@@ -286,18 +286,18 @@ data/library-site/         # Generated site
 ### Phase 12: CLI Integration (14 tasks)
 
 - [x] 159. Write tests for /build-library command handler
-- [ ] 160. Implement _build_library() method in GlennBot
-- [ ] 161. Add /build-library to handle_command() in src/main.py
-- [ ] 162. Write tests for /build-library --serve flag
-- [ ] 163. Implement --serve flag handling
-- [ ] 164. Write tests for /build-library --force flag
-- [ ] 165. Implement --force flag handling
-- [ ] 166. Write tests for /serve-library command
-- [ ] 167. Implement _serve_library() method
-- [ ] 168. Add /serve-library to handle_command()
-- [ ] 169. Write tests for /library-status command
-- [ ] 170. Implement _show_library_status() method
-- [ ] 171. Add /library-status to handle_command()
+- [x] 160. Implement _build_library() method in GlennBot
+- [x] 161. Add /build-library to handle_command() in src/main.py
+- [x] 162. Write tests for /build-library --serve flag
+- [x] 163. Implement --serve flag handling
+- [x] 164. Write tests for /build-library --force flag
+- [x] 165. Implement --force flag handling
+- [x] 166. Write tests for /serve-library command
+- [x] 167. Implement _serve_library() method
+- [x] 168. Add /serve-library to handle_command()
+- [x] 169. Write tests for /library-status command
+- [x] 170. Implement _show_library_status() method
+- [x] 171. Add /library-status to handle_command()
 - [ ] 172. Update display_help() in src/terminal_ui.py with library commands section
 
 ### Phase 13: Edge Cases & Polish (14 tasks)
