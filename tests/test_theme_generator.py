@@ -30,16 +30,98 @@ import json
 from src.library.models import Theme, ThemeAssignment, LibraryItem, ContentType
 
 
-# Placeholder test to ensure file is valid and can be discovered by pytest
-class TestThemeGeneratorModule:
-    """Basic tests to verify the theme generator module exists."""
+class TestThemeGeneratorInitialization:
+    """Tests for ThemeGenerator class initialization."""
 
-    def test_theme_generator_module_can_be_imported(self):
-        """ThemeGenerator module should be importable."""
-        # This test will fail until the module is created
-        # It serves as the initial failing test for TDD
-        try:
-            from src.library.theme_generator import ThemeGenerator
-            assert ThemeGenerator is not None
-        except ImportError:
-            pytest.skip("ThemeGenerator not yet implemented")
+    def test_theme_generator_can_be_imported(self):
+        """ThemeGenerator class should be importable from the module."""
+        from src.library.theme_generator import ThemeGenerator
+        assert ThemeGenerator is not None
+
+    def test_theme_generator_init_with_ollama_client(self, mock_ollama_client, temp_dir):
+        """ThemeGenerator should accept an OllamaClient instance."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assert generator.ollama_client is mock_ollama_client
+
+    def test_theme_generator_init_with_data_dir(self, mock_ollama_client, temp_dir):
+        """ThemeGenerator should accept a data_dir path."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assert generator.data_dir == data_dir
+
+    def test_theme_generator_init_creates_data_dir_if_not_exists(self, mock_ollama_client, temp_dir):
+        """ThemeGenerator should create the data_dir if it doesn't exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library" / "subdir"
+        assert not data_dir.exists()
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assert data_dir.exists()
+
+    def test_theme_generator_init_data_dir_as_string(self, mock_ollama_client, temp_dir):
+        """ThemeGenerator should accept data_dir as a string and convert to Path."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = str(temp_dir / "library")
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assert isinstance(generator.data_dir, Path)
+        assert generator.data_dir == Path(data_dir)
+
+    def test_theme_generator_has_themes_file_path(self, mock_ollama_client, temp_dir):
+        """ThemeGenerator should have a themes_file path attribute."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assert generator.themes_file == data_dir / "themes.json"
+
+    def test_theme_generator_has_assignments_file_path(self, mock_ollama_client, temp_dir):
+        """ThemeGenerator should have an assignments_file path attribute."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assert generator.assignments_file == data_dir / "assignments.json"
+
+    def test_theme_generator_initializes_empty_themes_list(self, mock_ollama_client, temp_dir):
+        """ThemeGenerator should initialize with an empty themes list."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assert generator.themes == []
+
+    def test_theme_generator_initializes_empty_assignments_list(self, mock_ollama_client, temp_dir):
+        """ThemeGenerator should initialize with an empty assignments list."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        assert generator.assignments == []
