@@ -1878,3 +1878,586 @@ class TestResolveCover:
             # Should return a placeholder path containing the content type
             assert content_type.value in result.lower()
             assert result.endswith(".svg")
+
+
+class TestResolveAllCovers:
+    """Tests for resolve_all_covers() method that processes multiple items in batch."""
+
+    def test_resolve_all_covers_accepts_list_of_items(self, temp_dir):
+        """resolve_all_covers() should accept a list of LibraryItems."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="item_1",
+                content_type=ContentType.FRAMEWORK,
+                title="Test Framework",
+                summary="A test framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        # Should not raise an error
+        result = resolver.resolve_all_covers(items)
+
+        assert result is not None
+
+    def test_resolve_all_covers_returns_list_of_items(self, temp_dir):
+        """resolve_all_covers() should return a list of LibraryItems."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="item_1",
+                content_type=ContentType.VALUE,
+                title="Test Value",
+                summary="A test value",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        result = resolver.resolve_all_covers(items)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], LibraryItem)
+
+    def test_resolve_all_covers_populates_cover_image_url(self, temp_dir):
+        """resolve_all_covers() should populate cover_image_url for each item."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="item_1",
+                content_type=ContentType.ARTICLE,
+                title="Test Article",
+                summary="A test article",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        result = resolver.resolve_all_covers(items)
+
+        assert result[0].cover_image_url is not None
+        assert "article" in result[0].cover_image_url.lower()
+
+    def test_resolve_all_covers_processes_multiple_items(self, temp_dir):
+        """resolve_all_covers() should process all items in the list."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="item_1",
+                content_type=ContentType.FRAMEWORK,
+                title="Framework 1",
+                summary="First framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="item_2",
+                content_type=ContentType.VALUE,
+                title="Value 1",
+                summary="First value",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="item_3",
+                content_type=ContentType.INSIGHT,
+                title="Insight 1",
+                summary="First insight",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        result = resolver.resolve_all_covers(items)
+
+        assert len(result) == 3
+        assert all(item.cover_image_url is not None for item in result)
+
+    def test_resolve_all_covers_handles_empty_list(self, temp_dir):
+        """resolve_all_covers() should handle an empty list gracefully."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.resolve_all_covers([])
+
+        assert result == []
+
+    def test_resolve_all_covers_preserves_item_order(self, temp_dir):
+        """resolve_all_covers() should preserve the order of items."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="first",
+                content_type=ContentType.GOAL,
+                title="First",
+                summary="First item",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="second",
+                content_type=ContentType.SKILL,
+                title="Second",
+                summary="Second item",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="third",
+                content_type=ContentType.MEMORY,
+                title="Third",
+                summary="Third item",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        result = resolver.resolve_all_covers(items)
+
+        assert result[0].id == "first"
+        assert result[1].id == "second"
+        assert result[2].id == "third"
+
+    def test_resolve_all_covers_uses_resolve_cover_for_each_item(self, temp_dir):
+        """resolve_all_covers() should call resolve_cover() for each item."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="item_1",
+                content_type=ContentType.PREFERENCE,
+                title="Preference 1",
+                summary="First preference",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="item_2",
+                content_type=ContentType.WEB_CONTENT,
+                title="Web Content 1",
+                summary="First web content",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        with patch.object(resolver, 'resolve_cover') as mock_resolve_cover:
+            # Return a placeholder URL for each call
+            mock_resolve_cover.side_effect = [
+                "assets/images/placeholders/preference.svg",
+                "assets/images/placeholders/web_content.svg"
+            ]
+
+            resolver.resolve_all_covers(items)
+
+            assert mock_resolve_cover.call_count == 2
+
+    def test_resolve_all_covers_handles_mixed_content_types(self, temp_dir):
+        """resolve_all_covers() should handle books and non-books in the same batch."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="book_1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={"isbn": "9781234567890"},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="framework_1",
+                content_type=ContentType.FRAMEWORK,
+                title="Test Framework",
+                summary="A test framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            result = resolver.resolve_all_covers(items)
+
+            # Book should have API-resolved cover
+            assert "isbn" in result[0].cover_image_url or "openlibrary" in result[0].cover_image_url
+            # Framework should have placeholder
+            assert "framework" in result[1].cover_image_url.lower()
+
+    def test_resolve_all_covers_caches_all_items(self, temp_dir):
+        """resolve_all_covers() should cache all resolved covers."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="cache_test_1",
+                content_type=ContentType.ARTICLE,
+                title="Article 1",
+                summary="First article",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="cache_test_2",
+                content_type=ContentType.INSIGHT,
+                title="Insight 1",
+                summary="First insight",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        resolver.resolve_all_covers(items)
+
+        # Both items should be in the cache
+        assert "cache_test_1" in resolver.cache
+        assert "cache_test_2" in resolver.cache
+
+    def test_resolve_all_covers_uses_existing_cache(self, temp_dir):
+        """resolve_all_covers() should use cached values for already-resolved items."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        # Pre-populate cache for one item
+        resolver.cache["cached_item"] = {
+            "url": "https://cached.example.com/cover.jpg",
+            "resolved_at": "2024-01-15T10:30:00",
+            "source": "open_library_isbn"
+        }
+
+        items = [
+            LibraryItem(
+                id="cached_item",
+                content_type=ContentType.BOOK,
+                title="Cached Book",
+                summary="A cached book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={"isbn": "1234567890"},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="new_item",
+                content_type=ContentType.FRAMEWORK,
+                title="New Framework",
+                summary="A new framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            result = resolver.resolve_all_covers(items)
+
+            # Should not make API calls for cached item
+            # (only the framework would potentially need API, but it's non-book)
+            mock_head.assert_not_called()
+
+            # Cached item should use cached URL
+            assert result[0].cover_image_url == "https://cached.example.com/cover.jpg"
+            # New item should have placeholder
+            assert "framework" in result[1].cover_image_url.lower()
+
+    def test_resolve_all_covers_preserves_other_item_fields(self, temp_dir):
+        """resolve_all_covers() should not modify other fields of the LibraryItem."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        original_created_at = datetime.now()
+        items = [
+            LibraryItem(
+                id="preserve_test",
+                content_type=ContentType.VALUE,
+                title="Original Title",
+                summary="Original Summary",
+                full_content="Original Full Content",
+                source_url="https://example.com/source",
+                cover_image_url=None,
+                metadata={"key": "value"},
+                themes=["theme1", "theme2"],
+                created_at=original_created_at,
+                highlights=["highlight1"]
+            )
+        ]
+
+        result = resolver.resolve_all_covers(items)
+
+        # All other fields should be preserved
+        assert result[0].id == "preserve_test"
+        assert result[0].content_type == ContentType.VALUE
+        assert result[0].title == "Original Title"
+        assert result[0].summary == "Original Summary"
+        assert result[0].full_content == "Original Full Content"
+        assert result[0].source_url == "https://example.com/source"
+        assert result[0].metadata == {"key": "value"}
+        assert result[0].themes == ["theme1", "theme2"]
+        assert result[0].created_at == original_created_at
+        assert result[0].highlights == ["highlight1"]
+        # And cover_image_url should be set
+        assert result[0].cover_image_url is not None
+
+    def test_resolve_all_covers_does_not_modify_original_items(self, temp_dir):
+        """resolve_all_covers() should not modify the original input items."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        original_item = LibraryItem(
+            id="original_item",
+            content_type=ContentType.GOAL,
+            title="Original Goal",
+            summary="A goal",
+            full_content="Full content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        result = resolver.resolve_all_covers([original_item])
+
+        # Original item should be unchanged
+        assert original_item.cover_image_url is None
+        # Result item should have cover_image_url set
+        assert result[0].cover_image_url is not None
+
+    def test_resolve_all_covers_continues_on_individual_failures(self, temp_dir):
+        """resolve_all_covers() should continue processing if one item fails."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="item_1",
+                content_type=ContentType.BOOK,
+                title="Book 1",
+                summary="First book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={"isbn": "bad_isbn"},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="item_2",
+                content_type=ContentType.FRAMEWORK,
+                title="Framework 1",
+                summary="First framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("src.library.cover_resolver.requests.get") as mock_get:
+            # All API calls fail for the book
+            mock_head_response = Mock()
+            mock_head_response.status_code = 404
+            mock_head.return_value = mock_head_response
+
+            mock_get_response = Mock()
+            mock_get_response.status_code = 200
+            mock_get_response.json.return_value = {"totalItems": 0}
+            mock_get.return_value = mock_get_response
+
+            result = resolver.resolve_all_covers(items)
+
+            # Should return both items with covers (book with placeholder, framework with placeholder)
+            assert len(result) == 2
+            assert result[0].cover_image_url is not None  # Falls back to placeholder
+            assert result[1].cover_image_url is not None  # Framework placeholder
+
+    def test_resolve_all_covers_saves_cache_once_at_end(self, temp_dir):
+        """resolve_all_covers() should save cache efficiently (not after every item)."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id=f"item_{i}",
+                content_type=ContentType.ARTICLE,
+                title=f"Article {i}",
+                summary=f"Article summary {i}",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+            for i in range(5)
+        ]
+
+        with patch.object(resolver, '_save_cache') as mock_save_cache:
+            resolver.resolve_all_covers(items)
+
+            # Should save cache once at the end, not 5 times
+            assert mock_save_cache.call_count == 1
