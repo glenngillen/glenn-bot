@@ -444,3 +444,56 @@ Important:
         self.save_themes()
 
         return themes
+
+    def assign_items_to_themes(
+        self, items: list[LibraryItem]
+    ) -> list[ThemeAssignment]:
+        """Assign library items to themes using AI.
+
+        Orchestrates the item-to-theme assignment process by:
+        1. Building a prompt from the provided items and themes
+        2. Calling OllamaClient.generate() to get AI-generated assignments
+        3. Parsing the response into ThemeAssignment objects
+        4. Saving the assignments to disk
+        5. Updating self.assignments with the new assignments
+
+        Each item can be assigned to multiple themes with confidence scores
+        indicating how well the item fits each theme.
+
+        Args:
+            items: List of LibraryItem objects to assign to themes.
+
+        Returns:
+            List of ThemeAssignment objects. Returns empty list if:
+            - No items are provided
+            - No themes exist (self.themes is empty)
+            - The LLM returns an invalid response
+        """
+        # Return empty list for edge cases
+        if not items:
+            return []
+        if not self.themes:
+            return []
+
+        # Build the prompt from items and themes
+        prompt = self._build_assignment_prompt(items, self.themes)
+
+        # Call OllamaClient to generate assignments
+        system_prompt = (
+            "You are a knowledge organization expert. Assign content items to "
+            "thematic categories with appropriate confidence scores. "
+            "Always respond with valid JSON arrays only."
+        )
+        response = self.ollama_client.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+        )
+
+        # Parse the response into ThemeAssignment objects
+        assignments = self._parse_assignments_from_response(response)
+
+        # Update self.assignments and save to disk
+        self.assignments = assignments
+        self.save_assignments()
+
+        return assignments

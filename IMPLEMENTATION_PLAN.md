@@ -155,7 +155,7 @@ data/library-site/         # Generated site
 - [x] 53. Write tests for _parse_assignments_from_response() parsing into ThemeAssignment
 - [x] 54. Implement _parse_assignments_from_response() method
 - [x] 55. Write tests for assign_items_to_themes() with confidence scores
-- [ ] 56. Implement assign_items_to_themes() method
+- [x] 56. Implement assign_items_to_themes() method
 - [ ] 57. Write tests for update_assignments() for incremental updates
 - [ ] 58. Implement update_assignments() for new content
 - [ ] 59. Write tests for "Miscellaneous" catch-all theme (confidence < 0.3)
