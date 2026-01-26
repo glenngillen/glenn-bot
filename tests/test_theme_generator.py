@@ -3060,3 +3060,496 @@ class TestBuildAssignmentPrompt:
 
         # Should mention the confidence score range
         assert ("0" in prompt and "1" in prompt) or "0.0" in prompt or "1.0" in prompt
+
+
+class TestParseAssignmentsFromResponse:
+    """Tests for _parse_assignments_from_response() method that parses LLM output into ThemeAssignment objects."""
+
+    def test_parse_assignments_from_response_returns_list_of_assignments(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should return a list of ThemeAssignment objects."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-123",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert isinstance(assignments, list)
+        assert len(assignments) == 1
+        assert isinstance(assignments[0], ThemeAssignment)
+
+    def test_parse_assignments_from_response_extracts_item_id_correctly(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should extract the item_id field correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "book-atomic-habits",
+                "theme_id": "personal-growth",
+                "confidence": 0.9
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert assignments[0].item_id == "book-atomic-habits"
+
+    def test_parse_assignments_from_response_extracts_theme_id_correctly(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should extract the theme_id field correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "systems-thinking",
+                "confidence": 0.75
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert assignments[0].theme_id == "systems-thinking"
+
+    def test_parse_assignments_from_response_extracts_confidence_correctly(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should extract the confidence field correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.92
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert assignments[0].confidence == 0.92
+
+    def test_parse_assignments_from_response_sets_assigned_at_timestamp(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should set assigned_at to current time."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            }
+        ]'''
+
+        before = datetime.now()
+        assignments = generator._parse_assignments_from_response(response)
+        after = datetime.now()
+
+        assert before <= assignments[0].assigned_at <= after
+
+    def test_parse_assignments_from_response_parses_multiple_assignments(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should parse multiple assignments from the response."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            },
+            {
+                "item_id": "item-1",
+                "theme_id": "technology",
+                "confidence": 0.65
+            },
+            {
+                "item_id": "item-2",
+                "theme_id": "personal-growth",
+                "confidence": 0.95
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 3
+        assert assignments[0].item_id == "item-1"
+        assert assignments[0].theme_id == "personal-growth"
+        assert assignments[1].item_id == "item-1"
+        assert assignments[1].theme_id == "technology"
+        assert assignments[2].item_id == "item-2"
+
+    def test_parse_assignments_from_response_handles_json_with_markdown_code_block(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should handle JSON wrapped in markdown code blocks."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''```json
+[
+    {
+        "item_id": "item-1",
+        "theme_id": "personal-growth",
+        "confidence": 0.85
+    }
+]
+```'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].item_id == "item-1"
+
+    def test_parse_assignments_from_response_handles_generic_markdown_code_block(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should handle JSON wrapped in generic code blocks."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''```
+[
+    {
+        "item_id": "item-2",
+        "theme_id": "technology",
+        "confidence": 0.7
+    }
+]
+```'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].theme_id == "technology"
+
+    def test_parse_assignments_from_response_returns_empty_list_for_invalid_json(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should return empty list for invalid JSON."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = "This is not valid JSON at all."
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert assignments == []
+
+    def test_parse_assignments_from_response_returns_empty_list_for_empty_response(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should return empty list for empty response."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = ""
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert assignments == []
+
+    def test_parse_assignments_from_response_returns_empty_list_for_empty_json_array(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should return empty list for empty JSON array."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = "[]"
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert assignments == []
+
+    def test_parse_assignments_from_response_skips_assignments_missing_item_id(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should skip assignments missing item_id."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "valid-item",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            },
+            {
+                "theme_id": "technology",
+                "confidence": 0.7
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].item_id == "valid-item"
+
+    def test_parse_assignments_from_response_skips_assignments_missing_theme_id(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should skip assignments missing theme_id."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            },
+            {
+                "item_id": "item-2",
+                "confidence": 0.7
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].theme_id == "personal-growth"
+
+    def test_parse_assignments_from_response_skips_assignments_missing_confidence(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should skip assignments missing confidence."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            },
+            {
+                "item_id": "item-2",
+                "theme_id": "technology"
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].item_id == "item-1"
+
+    def test_parse_assignments_from_response_handles_extra_whitespace(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should handle extra whitespace in response."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''
+
+            [
+                {
+                    "item_id": "item-1",
+                    "theme_id": "personal-growth",
+                    "confidence": 0.85
+                }
+            ]
+
+        '''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].item_id == "item-1"
+
+    def test_parse_assignments_from_response_handles_llm_preamble_text(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should handle LLM response with preamble text before JSON."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''Based on the content provided, here are the theme assignments:
+
+```json
+[
+    {
+        "item_id": "item-1",
+        "theme_id": "personal-growth",
+        "confidence": 0.9
+    }
+]
+```
+
+These assignments reflect the relevance of each item to the available themes.'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].item_id == "item-1"
+        assert assignments[0].confidence == 0.9
+
+    def test_parse_assignments_from_response_handles_confidence_as_integer(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should handle confidence as integer (e.g., 1 instead of 1.0)."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 1
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].confidence == 1.0
+
+    def test_parse_assignments_from_response_handles_zero_confidence(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should handle confidence of 0."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].confidence == 0.0
+
+    def test_parse_assignments_from_response_skips_non_dict_entries(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should skip non-dictionary entries in the array."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            },
+            "not a dict",
+            123,
+            null
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 1
+        assert assignments[0].item_id == "item-1"
+
+    def test_parse_assignments_from_response_returns_empty_list_for_non_array_json(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should return empty list if JSON is not an array."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''{
+            "item_id": "item-1",
+            "theme_id": "personal-growth",
+            "confidence": 0.85
+        }'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert assignments == []
+
+    def test_parse_assignments_from_response_handles_whitespace_only_response(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should return empty list for whitespace-only response."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = "   \n\t\n   "
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert assignments == []
+
+    def test_parse_assignments_from_response_preserves_order(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should preserve the order of assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "first-item",
+                "theme_id": "theme-a",
+                "confidence": 0.9
+            },
+            {
+                "item_id": "second-item",
+                "theme_id": "theme-b",
+                "confidence": 0.8
+            },
+            {
+                "item_id": "third-item",
+                "theme_id": "theme-c",
+                "confidence": 0.7
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 3
+        assert assignments[0].item_id == "first-item"
+        assert assignments[1].item_id == "second-item"
+        assert assignments[2].item_id == "third-item"
+
+    def test_parse_assignments_from_response_all_assignments_have_same_timestamp(self, mock_ollama_client, temp_dir):
+        """_parse_assignments_from_response() should set the same assigned_at for all assignments in one call."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            },
+            {
+                "item_id": "item-2",
+                "theme_id": "technology",
+                "confidence": 0.75
+            }
+        ]'''
+
+        assignments = generator._parse_assignments_from_response(response)
+
+        assert len(assignments) == 2
+        assert assignments[0].assigned_at == assignments[1].assigned_at
