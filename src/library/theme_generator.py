@@ -561,3 +561,114 @@ Important:
         self.save_assignments()
 
         return new_assignments
+
+    def ensure_miscellaneous_theme(self) -> Theme:
+        """Ensure a Miscellaneous theme exists for catch-all assignments.
+
+        If a theme with id "miscellaneous" already exists in self.themes,
+        returns that theme. Otherwise, creates a new Miscellaneous theme
+        with appropriate properties and adds it to self.themes.
+
+        The Miscellaneous theme serves as a catch-all category for items
+        that don't fit well into any of the generated themes (i.e., items
+        with max confidence < 0.3 across all theme assignments).
+
+        Returns:
+            The Miscellaneous Theme object (either existing or newly created).
+        """
+        # Check if Miscellaneous theme already exists
+        for theme in self.themes:
+            if theme.id == "miscellaneous":
+                return theme
+
+        # Create new Miscellaneous theme
+        now = datetime.now()
+        misc_theme = Theme(
+            id="miscellaneous",
+            name="Miscellaneous",
+            description="Catch-all category for uncategorized items",
+            keywords=["misc", "other", "uncategorized"],
+            item_count=0,
+            created_at=now,
+            updated_at=now,
+        )
+
+        # Add to themes list
+        self.themes.append(misc_theme)
+
+        return misc_theme
+
+    def apply_miscellaneous_fallback(
+        self, items: list[LibraryItem]
+    ) -> list[ThemeAssignment]:
+        """Apply Miscellaneous fallback for items with low confidence assignments.
+
+        Items that don't fit any theme well (max confidence < 0.3 across all
+        their assignments) are automatically assigned to the Miscellaneous
+        theme. Items with no assignments at all are also assigned to
+        Miscellaneous.
+
+        This method:
+        1. Ensures the Miscellaneous theme exists
+        2. Identifies items needing the fallback (max confidence < 0.3 or no assignments)
+        3. Skips items already assigned to Miscellaneous
+        4. Creates new ThemeAssignment objects with a low confidence score
+        5. Adds the new assignments to self.assignments
+
+        Args:
+            items: List of LibraryItem objects to check for fallback assignment.
+
+        Returns:
+            List of new ThemeAssignment objects created for the Miscellaneous
+            theme. Returns empty list if no items need fallback assignment.
+        """
+        # Handle empty items list
+        if not items:
+            return []
+
+        # Ensure Miscellaneous theme exists
+        self.ensure_miscellaneous_theme()
+
+        # Find items that need Miscellaneous assignment
+        new_assignments = []
+        now = datetime.now()
+
+        # Confidence threshold for fallback
+        threshold = 0.3
+
+        for item in items:
+            # Get all assignments for this item
+            item_assignments = [a for a in self.assignments if a.item_id == item.id]
+
+            # Skip if item already has a Miscellaneous assignment
+            if any(a.theme_id == "miscellaneous" for a in item_assignments):
+                continue
+
+            # Check if item needs fallback:
+            # - No assignments at all, OR
+            # - All assignments have confidence < threshold
+            needs_fallback = False
+
+            if not item_assignments:
+                # No assignments at all
+                needs_fallback = True
+            else:
+                # Check max confidence across all assignments
+                max_confidence = max(a.confidence for a in item_assignments)
+                if max_confidence < threshold:
+                    needs_fallback = True
+
+            if needs_fallback:
+                # Create Miscellaneous assignment with low confidence
+                # Use 0.1 to indicate it's a fallback, not a strong match
+                assignment = ThemeAssignment(
+                    item_id=item.id,
+                    theme_id="miscellaneous",
+                    confidence=0.1,
+                    assigned_at=now,
+                )
+                new_assignments.append(assignment)
+                # Also add to self.assignments
+                self.assignments.append(assignment)
+
+        return new_assignments

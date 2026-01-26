@@ -159,7 +159,7 @@ data/library-site/         # Generated site
 - [x] 57. Write tests for update_assignments() for incremental updates
 - [x] 58. Implement update_assignments() for new content
 - [x] 59. Write tests for "Miscellaneous" catch-all theme (confidence < 0.3)
-- [ ] 60. Implement catch-all theme handling
+- [x] 60. Implement catch-all theme handling
 - [ ] 61. Write tests for get_items_for_theme() returning assigned items
 - [ ] 62. Implement get_items_for_theme() method
 
