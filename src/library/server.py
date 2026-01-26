@@ -44,3 +44,49 @@ class LibraryServer:
 
         if not self.site_dir.exists():
             raise ValueError(f"Site directory does not exist: {self.site_dir}")
+
+    def serve(self, blocking: bool = True) -> str:
+        """Start the HTTP server to serve the library site.
+
+        Args:
+            blocking: If True, blocks until server is interrupted.
+                If False, returns immediately after server starts.
+
+        Returns:
+            The URL where the server is accessible (e.g., "http://localhost:8080").
+        """
+        # Create a custom handler that serves from our site directory
+        class SiteHandler(http.server.SimpleHTTPRequestHandler):
+            def __init__(handler_self, *args, **kwargs):
+                super().__init__(*args, directory=str(self.site_dir), **kwargs)
+
+            def log_message(handler_self, format, *args):
+                # Suppress default logging
+                pass
+
+        # Allow address reuse to avoid "Address already in use" errors
+        socketserver.TCPServer.allow_reuse_address = True
+
+        self.httpd = socketserver.TCPServer(("", self.port), SiteHandler)
+
+        url = f"http://localhost:{self.port}"
+
+        if blocking:
+            self.httpd.serve_forever()
+        else:
+            # Start server in a separate thread for non-blocking mode
+            import threading
+
+            server_thread = threading.Thread(target=self.httpd.serve_forever)
+            server_thread.daemon = True
+            server_thread.start()
+
+        return url
+
+    def stop(self) -> None:
+        """Stop the running HTTP server.
+
+        Safe to call even if server is not running.
+        """
+        if self.httpd is not None:
+            self.httpd.shutdown()

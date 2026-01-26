@@ -279,7 +279,7 @@ data/library-site/         # Generated site
 - [x] 153. Write tests for LibraryServer initialization
 - [x] 154. Implement LibraryServer class in `src/library/server.py`
 - [x] 155. Write tests for serve() starting HTTP server
-- [ ] 156. Implement serve() using http.server
+- [x] 156. Implement serve() using http.server
 - [ ] 157. Write tests for port-in-use handling
 - [ ] 158. Implement port fallback logic
 
