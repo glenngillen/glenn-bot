@@ -714,3 +714,279 @@ class TestTheme:
         assert theme.keywords == keywords
         assert theme.keywords[0] == "first"
         assert theme.keywords[-1] == "fourth"
+
+
+class TestThemeSerialization:
+    """Tests for Theme serialization methods (to_dict and from_dict)."""
+
+    def test_to_dict_returns_dictionary(self):
+        """to_dict should return a dictionary."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="systems-thinking",
+            name="Systems Thinking",
+            description="Mental models for understanding complex systems",
+            keywords=["systems", "feedback", "complexity"],
+            item_count=15,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        result = theme.to_dict()
+        assert isinstance(result, dict)
+
+    def test_to_dict_serializes_all_fields(self):
+        """to_dict should include all Theme fields."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="systems-thinking",
+            name="Systems Thinking",
+            description="Mental models for understanding complex systems",
+            keywords=["systems", "feedback", "complexity"],
+            item_count=15,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["id"] == "systems-thinking"
+        assert result["name"] == "Systems Thinking"
+        assert result["description"] == "Mental models for understanding complex systems"
+        assert result["keywords"] == ["systems", "feedback", "complexity"]
+        assert result["item_count"] == 15
+
+    def test_to_dict_serializes_created_at_as_iso_string(self):
+        """to_dict should convert created_at datetime to ISO format string."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=[],
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["created_at"] == "2024-01-15T10:30:00"
+        assert isinstance(result["created_at"], str)
+
+    def test_to_dict_serializes_updated_at_as_iso_string(self):
+        """to_dict should convert updated_at datetime to ISO format string."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=[],
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["updated_at"] == "2024-01-20T14:00:00"
+        assert isinstance(result["updated_at"], str)
+
+    def test_to_dict_preserves_empty_keywords(self):
+        """to_dict should preserve empty keywords list."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="miscellaneous",
+            name="Miscellaneous",
+            description="Uncategorized content",
+            keywords=[],
+            item_count=5,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["keywords"] == []
+
+    def test_to_dict_preserves_zero_item_count(self):
+        """to_dict should preserve item_count of zero."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="new-theme",
+            name="New Theme",
+            description="A newly created theme",
+            keywords=["new"],
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["item_count"] == 0
+
+    def test_from_dict_returns_theme(self):
+        """from_dict should return a Theme instance."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "systems-thinking",
+            "name": "Systems Thinking",
+            "description": "Mental models for understanding complex systems",
+            "keywords": ["systems", "feedback", "complexity"],
+            "item_count": 15,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-20T14:00:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert isinstance(result, Theme)
+
+    def test_from_dict_deserializes_all_fields(self):
+        """from_dict should correctly set all Theme fields."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "systems-thinking",
+            "name": "Systems Thinking",
+            "description": "Mental models for understanding complex systems",
+            "keywords": ["systems", "feedback", "complexity"],
+            "item_count": 15,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-20T14:00:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.id == "systems-thinking"
+        assert result.name == "Systems Thinking"
+        assert result.description == "Mental models for understanding complex systems"
+        assert result.keywords == ["systems", "feedback", "complexity"]
+        assert result.item_count == 15
+
+    def test_from_dict_deserializes_created_at_from_iso_string(self):
+        """from_dict should convert created_at ISO string to datetime."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "test-theme",
+            "name": "Test Theme",
+            "description": "A test theme",
+            "keywords": [],
+            "item_count": 0,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-20T14:00:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.created_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert isinstance(result.created_at, datetime)
+
+    def test_from_dict_deserializes_updated_at_from_iso_string(self):
+        """from_dict should convert updated_at ISO string to datetime."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "test-theme",
+            "name": "Test Theme",
+            "description": "A test theme",
+            "keywords": [],
+            "item_count": 0,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-20T14:00:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.updated_at == datetime(2024, 1, 20, 14, 0, 0)
+        assert isinstance(result.updated_at, datetime)
+
+    def test_from_dict_handles_empty_keywords(self):
+        """from_dict should correctly handle empty keywords list."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "miscellaneous",
+            "name": "Miscellaneous",
+            "description": "Uncategorized content",
+            "keywords": [],
+            "item_count": 5,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-15T10:30:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.keywords == []
+
+    def test_from_dict_handles_zero_item_count(self):
+        """from_dict should correctly handle item_count of zero."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "new-theme",
+            "name": "New Theme",
+            "description": "A newly created theme",
+            "keywords": ["new"],
+            "item_count": 0,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-15T10:30:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.item_count == 0
+
+    def test_roundtrip_to_dict_from_dict(self):
+        """Converting to_dict then from_dict should produce equivalent object."""
+        from src.library.models import Theme
+
+        original = Theme(
+            id="systems-thinking",
+            name="Systems Thinking",
+            description="Mental models for understanding complex systems",
+            keywords=["systems", "feedback", "complexity", "mental models"],
+            item_count=15,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        data = original.to_dict()
+        reconstructed = Theme.from_dict(data)
+
+        assert reconstructed.id == original.id
+        assert reconstructed.name == original.name
+        assert reconstructed.description == original.description
+        assert reconstructed.keywords == original.keywords
+        assert reconstructed.item_count == original.item_count
+        assert reconstructed.created_at == original.created_at
+        assert reconstructed.updated_at == original.updated_at
+
+    def test_from_dict_preserves_keywords_order(self):
+        """from_dict should preserve the order of keywords."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "test-theme",
+            "name": "Test Theme",
+            "description": "A test theme",
+            "keywords": ["first", "second", "third", "fourth"],
+            "item_count": 0,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-15T10:30:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.keywords == ["first", "second", "third", "fourth"]
+        assert result.keywords[0] == "first"
+        assert result.keywords[-1] == "fourth"
