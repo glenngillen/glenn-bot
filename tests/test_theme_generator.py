@@ -3553,3 +3553,793 @@ These assignments reflect the relevance of each item to the available themes.'''
 
         assert len(assignments) == 2
         assert assignments[0].assigned_at == assignments[1].assigned_at
+
+
+class TestAssignItemsToThemes:
+    """Tests for assign_items_to_themes() method that assigns items to themes using AI."""
+
+    def test_assign_items_to_themes_returns_list_of_assignments(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should return a list of ThemeAssignment objects."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement and learning",
+                keywords=["growth", "learning"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Software and tech innovations",
+                keywords=["software", "tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Learning to Code",
+                summary="A book about learning programming",
+                full_content="Full content about coding",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            },
+            {
+                "item_id": "item-1",
+                "theme_id": "technology",
+                "confidence": 0.75
+            }
+        ]'''
+
+        result = generator.assign_items_to_themes(items)
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert all(isinstance(a, ThemeAssignment) for a in result)
+
+    def test_assign_items_to_themes_calls_ollama_client(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should call OllamaClient.generate() with correct parameters."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.VALUE,
+                title="Test Value",
+                summary="A test value",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.9
+            }
+        ]'''
+
+        generator.assign_items_to_themes(items)
+
+        # Verify generate was called
+        mock_ollama_client.generate.assert_called_once()
+        call_kwargs = mock_ollama_client.generate.call_args[1]
+        assert "prompt" in call_kwargs
+        assert "system_prompt" in call_kwargs
+
+    def test_assign_items_to_themes_updates_self_assignments(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should update self.assignments with new assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.ARTICLE,
+                title="Tech Article",
+                summary="An article about technology",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "technology",
+                "confidence": 0.95
+            }
+        ]'''
+
+        generator.assign_items_to_themes(items)
+
+        assert len(generator.assignments) == 1
+        assert generator.assignments[0].item_id == "item-1"
+        assert generator.assignments[0].theme_id == "technology"
+        assert generator.assignments[0].confidence == 0.95
+
+    def test_assign_items_to_themes_saves_assignments_to_disk(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should save assignments to assignments.json."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="business",
+                name="Business",
+                description="Business topics",
+                keywords=["business"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.FRAMEWORK,
+                title="Business Framework",
+                summary="A business framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "business",
+                "confidence": 0.88
+            }
+        ]'''
+
+        generator.assign_items_to_themes(items)
+
+        # Check that the file was created
+        assert (data_dir / "assignments.json").exists()
+
+        # Check the file contents
+        with open(data_dir / "assignments.json") as f:
+            data = json.load(f)
+
+        assert len(data) == 1
+        assert data[0]["item_id"] == "item-1"
+        assert data[0]["theme_id"] == "business"
+        assert data[0]["confidence"] == 0.88
+
+    def test_assign_items_to_themes_assigns_item_to_multiple_themes(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should allow an item to be assigned to multiple themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="business",
+                name="Business",
+                description="Business topics",
+                keywords=["business"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="cross-domain-item",
+                content_type=ContentType.BOOK,
+                title="Tech Entrepreneurship for Personal Growth",
+                summary="A book about tech startups and personal development",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response - item assigned to all three themes
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "cross-domain-item",
+                "theme_id": "personal-growth",
+                "confidence": 0.85
+            },
+            {
+                "item_id": "cross-domain-item",
+                "theme_id": "technology",
+                "confidence": 0.90
+            },
+            {
+                "item_id": "cross-domain-item",
+                "theme_id": "business",
+                "confidence": 0.75
+            }
+        ]'''
+
+        result = generator.assign_items_to_themes(items)
+
+        # Should have 3 assignments for the one item
+        assert len(result) == 3
+
+        # All assignments should be for the same item
+        item_ids = [a.item_id for a in result]
+        assert all(id == "cross-domain-item" for id in item_ids)
+
+        # Should have assignments to all three themes
+        theme_ids = [a.theme_id for a in result]
+        assert "personal-growth" in theme_ids
+        assert "technology" in theme_ids
+        assert "business" in theme_ids
+
+    def test_assign_items_to_themes_handles_multiple_items(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should correctly assign multiple items to themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up multiple items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.VALUE,
+                title="Growth Mindset",
+                summary="A value about growth mindset",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.ARTICLE,
+                title="Python Best Practices",
+                summary="An article about Python",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-3",
+                content_type=ContentType.BOOK,
+                title="Learning Python",
+                summary="A book about learning Python programming",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Mock the LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "personal-growth",
+                "confidence": 0.95
+            },
+            {
+                "item_id": "item-2",
+                "theme_id": "technology",
+                "confidence": 0.90
+            },
+            {
+                "item_id": "item-3",
+                "theme_id": "technology",
+                "confidence": 0.85
+            },
+            {
+                "item_id": "item-3",
+                "theme_id": "personal-growth",
+                "confidence": 0.65
+            }
+        ]'''
+
+        result = generator.assign_items_to_themes(items)
+
+        # Should have 4 total assignments
+        assert len(result) == 4
+
+        # Check item-1 assignments
+        item1_assignments = [a for a in result if a.item_id == "item-1"]
+        assert len(item1_assignments) == 1
+        assert item1_assignments[0].theme_id == "personal-growth"
+
+        # Check item-2 assignments
+        item2_assignments = [a for a in result if a.item_id == "item-2"]
+        assert len(item2_assignments) == 1
+        assert item2_assignments[0].theme_id == "technology"
+
+        # Check item-3 assignments (should have 2)
+        item3_assignments = [a for a in result if a.item_id == "item-3"]
+        assert len(item3_assignments) == 2
+        theme_ids = [a.theme_id for a in item3_assignments]
+        assert "technology" in theme_ids
+        assert "personal-growth" in theme_ids
+
+    def test_assign_items_to_themes_captures_confidence_scores(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should correctly capture confidence scores."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="theme-1",
+                name="Theme 1",
+                description="First theme",
+                keywords=["theme1"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="theme-2",
+                name="Theme 2",
+                description="Second theme",
+                keywords=["theme2"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Set up item
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.INSIGHT,
+                title="Test Insight",
+                summary="A test insight",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response with different confidence scores
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "theme-1",
+                "confidence": 0.92
+            },
+            {
+                "item_id": "item-1",
+                "theme_id": "theme-2",
+                "confidence": 0.45
+            }
+        ]'''
+
+        result = generator.assign_items_to_themes(items)
+
+        # Check confidence scores
+        theme1_assignment = next(a for a in result if a.theme_id == "theme-1")
+        theme2_assignment = next(a for a in result if a.theme_id == "theme-2")
+
+        assert theme1_assignment.confidence == 0.92
+        assert theme2_assignment.confidence == 0.45
+
+    def test_assign_items_to_themes_returns_empty_list_for_empty_items(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should return empty list when given empty items list."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+        generator.themes = themes
+
+        result = generator.assign_items_to_themes([])
+
+        assert result == []
+        # Should not have called the LLM for empty items
+        mock_ollama_client.generate.assert_not_called()
+
+    def test_assign_items_to_themes_returns_empty_list_for_no_themes(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should return empty list when no themes exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # No themes set
+        generator.themes = []
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.MEMORY,
+                title="Test Memory",
+                summary="A test memory",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        result = generator.assign_items_to_themes(items)
+
+        assert result == []
+        # Should not have called the LLM when no themes exist
+        mock_ollama_client.generate.assert_not_called()
+
+    def test_assign_items_to_themes_uses_build_assignment_prompt(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should use _build_assignment_prompt() to construct the prompt."""
+        from src.library.theme_generator import ThemeGenerator
+        from unittest.mock import patch
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="test-theme",
+                name="Test Theme",
+                description="A test theme",
+                keywords=["test"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.SKILL,
+                title="Test Skill",
+                summary="A test skill",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "test-theme",
+                "confidence": 0.8
+            }
+        ]'''
+
+        with patch.object(generator, '_build_assignment_prompt', wraps=generator._build_assignment_prompt) as mock_build:
+            generator.assign_items_to_themes(items)
+
+            # Verify _build_assignment_prompt was called with items and themes
+            mock_build.assert_called_once_with(items, themes)
+
+    def test_assign_items_to_themes_uses_parse_assignments_from_response(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should use _parse_assignments_from_response() to parse the response."""
+        from src.library.theme_generator import ThemeGenerator
+        from unittest.mock import patch
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="test-theme",
+                name="Test Theme",
+                description="A test theme",
+                keywords=["test"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.GOAL,
+                title="Test Goal",
+                summary="A test goal",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response
+        llm_response = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "test-theme",
+                "confidence": 0.8
+            }
+        ]'''
+        mock_ollama_client.generate.return_value = llm_response
+
+        with patch.object(generator, '_parse_assignments_from_response', wraps=generator._parse_assignments_from_response) as mock_parse:
+            generator.assign_items_to_themes(items)
+
+            # Verify _parse_assignments_from_response was called with the LLM response
+            mock_parse.assert_called_once_with(llm_response)
+
+    def test_assign_items_to_themes_sets_assigned_at_timestamp(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should set assigned_at timestamp on all assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="test-theme",
+                name="Test Theme",
+                description="A test theme",
+                keywords=["test"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.PREFERENCE,
+                title="Test Preference",
+                summary="A test preference",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "item_id": "item-1",
+                "theme_id": "test-theme",
+                "confidence": 0.8
+            }
+        ]'''
+
+        before = datetime.now()
+        result = generator.assign_items_to_themes(items)
+        after = datetime.now()
+
+        assert len(result) == 1
+        assert before <= result[0].assigned_at <= after
+
+    def test_assign_items_to_themes_handles_llm_failure_gracefully(self, mock_ollama_client, temp_dir):
+        """assign_items_to_themes() should return empty list when LLM returns invalid response."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="test-theme",
+                name="Test Theme",
+                description="A test theme",
+                keywords=["test"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+        generator.themes = themes
+
+        # Set up items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.WEB_CONTENT,
+                title="Test Web Content",
+                summary="A test web content",
+                full_content="Full content",
+                source_url="https://example.com",
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        # Mock the LLM response with invalid JSON
+        mock_ollama_client.generate.return_value = "This is not valid JSON at all."
+
+        result = generator.assign_items_to_themes(items)
+
+        # Should return empty list for invalid response
+        assert result == []
+        assert generator.assignments == []
