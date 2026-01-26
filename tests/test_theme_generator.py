@@ -333,3 +333,220 @@ class TestSaveThemes:
 
         # Check for newlines (indented JSON has newlines)
         assert "\n" in content
+
+
+class TestLoadThemes:
+    """Tests for load_themes() method that reads themes from themes.json."""
+
+    def test_load_themes_reads_from_themes_file(self, mock_ollama_client, temp_dir):
+        """load_themes() should read from themes.json file in data_dir."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a themes.json file
+        theme_data = [
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement and learning",
+                "keywords": ["growth", "learning", "habits"],
+                "item_count": 5,
+                "created_at": "2026-01-15T10:00:00",
+                "updated_at": "2026-01-15T10:00:00",
+            }
+        ]
+        with open(data_dir / "themes.json", "w") as f:
+            json.dump(theme_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_themes()
+
+        assert len(generator.themes) == 1
+
+    def test_load_themes_parses_theme_objects_correctly(self, mock_ollama_client, temp_dir):
+        """load_themes() should parse JSON into Theme objects with correct fields."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        theme_data = [
+            {
+                "id": "systems-thinking",
+                "name": "Systems Thinking",
+                "description": "Understanding complex systems and feedback loops",
+                "keywords": ["systems", "feedback", "complexity"],
+                "item_count": 12,
+                "created_at": "2026-01-20T14:30:00",
+                "updated_at": "2026-01-25T09:15:00",
+            }
+        ]
+        with open(data_dir / "themes.json", "w") as f:
+            json.dump(theme_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_themes()
+
+        theme = generator.themes[0]
+        assert isinstance(theme, Theme)
+        assert theme.id == "systems-thinking"
+        assert theme.name == "Systems Thinking"
+        assert theme.description == "Understanding complex systems and feedback loops"
+        assert theme.keywords == ["systems", "feedback", "complexity"]
+        assert theme.item_count == 12
+        assert theme.created_at == datetime(2026, 1, 20, 14, 30, 0)
+        assert theme.updated_at == datetime(2026, 1, 25, 9, 15, 0)
+
+    def test_load_themes_loads_multiple_themes(self, mock_ollama_client, temp_dir):
+        """load_themes() should load multiple themes from themes.json."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        theme_data = [
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement",
+                "keywords": ["growth"],
+                "item_count": 5,
+                "created_at": "2026-01-15T10:00:00",
+                "updated_at": "2026-01-15T10:00:00",
+            },
+            {
+                "id": "technology",
+                "name": "Technology",
+                "description": "Tech innovations",
+                "keywords": ["tech"],
+                "item_count": 8,
+                "created_at": "2026-01-16T11:00:00",
+                "updated_at": "2026-01-16T11:00:00",
+            },
+            {
+                "id": "business",
+                "name": "Business",
+                "description": "Business strategy",
+                "keywords": ["business"],
+                "item_count": 3,
+                "created_at": "2026-01-17T12:00:00",
+                "updated_at": "2026-01-17T12:00:00",
+            },
+        ]
+        with open(data_dir / "themes.json", "w") as f:
+            json.dump(theme_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_themes()
+
+        assert len(generator.themes) == 3
+        assert generator.themes[0].id == "personal-growth"
+        assert generator.themes[1].id == "technology"
+        assert generator.themes[2].id == "business"
+
+    def test_load_themes_handles_empty_file(self, mock_ollama_client, temp_dir):
+        """load_themes() should handle empty themes list gracefully."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create an empty JSON array
+        with open(data_dir / "themes.json", "w") as f:
+            json.dump([], f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_themes()
+
+        assert generator.themes == []
+
+    def test_load_themes_handles_missing_file(self, mock_ollama_client, temp_dir):
+        """load_themes() should return empty list when themes.json doesn't exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Don't create themes.json file
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_themes()
+
+        assert generator.themes == []
+
+    def test_load_themes_replaces_existing_themes(self, mock_ollama_client, temp_dir):
+        """load_themes() should replace any existing themes in memory."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create themes.json with new data
+        theme_data = [
+            {
+                "id": "new-theme",
+                "name": "New Theme",
+                "description": "A new theme from file",
+                "keywords": ["new"],
+                "item_count": 1,
+                "created_at": "2026-01-26T12:00:00",
+                "updated_at": "2026-01-26T12:00:00",
+            }
+        ]
+        with open(data_dir / "themes.json", "w") as f:
+            json.dump(theme_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set some existing themes in memory
+        existing_theme = Theme(
+            id="existing-theme",
+            name="Existing Theme",
+            description="An existing theme",
+            keywords=["existing"],
+            item_count=10,
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+            updated_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        generator.themes = [existing_theme]
+
+        generator.load_themes()
+
+        # Should have replaced with file contents
+        assert len(generator.themes) == 1
+        assert generator.themes[0].id == "new-theme"
+
+    def test_load_themes_returns_loaded_themes(self, mock_ollama_client, temp_dir):
+        """load_themes() should return the list of loaded themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        theme_data = [
+            {
+                "id": "test-theme",
+                "name": "Test Theme",
+                "description": "A test theme",
+                "keywords": ["test"],
+                "item_count": 1,
+                "created_at": "2026-01-26T12:00:00",
+                "updated_at": "2026-01-26T12:00:00",
+            }
+        ]
+        with open(data_dir / "themes.json", "w") as f:
+            json.dump(theme_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        result = generator.load_themes()
+
+        assert result == generator.themes
+        assert len(result) == 1
+        assert result[0].id == "test-theme"
