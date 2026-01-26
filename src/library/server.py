@@ -45,15 +45,22 @@ class LibraryServer:
         if not self.site_dir.exists():
             raise ValueError(f"Site directory does not exist: {self.site_dir}")
 
-    def serve(self, blocking: bool = True) -> str:
+    def serve(self, blocking: bool = True, auto_port: bool = False) -> str:
         """Start the HTTP server to serve the library site.
 
         Args:
             blocking: If True, blocks until server is interrupted.
                 If False, returns immediately after server starts.
+            auto_port: If True, automatically tries incrementing ports
+                when the requested port is already in use.
+                Defaults to False.
 
         Returns:
             The URL where the server is accessible (e.g., "http://localhost:8080").
+
+        Raises:
+            OSError: If the port is in use and auto_port is False,
+                or if no available port is found after max attempts.
         """
         # Create a custom handler that serves from our site directory
         class SiteHandler(http.server.SimpleHTTPRequestHandler):
@@ -67,7 +74,24 @@ class LibraryServer:
         # Allow address reuse to avoid "Address already in use" errors
         socketserver.TCPServer.allow_reuse_address = True
 
-        self.httpd = socketserver.TCPServer(("", self.port), SiteHandler)
+        max_attempts = 10 if auto_port else 1
+        current_port = self.port
+
+        for attempt in range(max_attempts):
+            try:
+                self.httpd = socketserver.TCPServer(("", current_port), SiteHandler)
+                # Update port attribute if we're using a different port
+                self.port = current_port
+                break
+            except OSError as e:
+                if not auto_port or attempt == max_attempts - 1:
+                    if auto_port:
+                        raise OSError(
+                            f"Could not find an available port after {max_attempts} attempts "
+                            f"(tried ports {self.port} to {current_port})"
+                        ) from e
+                    raise
+                current_port += 1
 
         url = f"http://localhost:{self.port}"
 

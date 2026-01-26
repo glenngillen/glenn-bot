@@ -307,6 +307,12 @@ class TestServe:
                 server.httpd.shutdown()
 
 
+def _get_random_port_base():
+    """Get a random base port in a safe range to avoid test conflicts."""
+    import random
+    return random.randint(30000, 40000)
+
+
 class TestPortHandling:
     """Tests for port-in-use handling and fallback logic."""
 
@@ -319,16 +325,18 @@ class TestPortHandling:
         site_dir.mkdir(parents=True, exist_ok=True)
         (site_dir / "index.html").write_text("<html><body>Test</body></html>")
 
+        port = _get_random_port_base()
+
         # Occupy the port with another server
         class DummyHandler(socketserver.BaseRequestHandler):
             def handle(self):
                 pass
 
         socketserver.TCPServer.allow_reuse_address = True
-        blocking_server = socketserver.TCPServer(("", 18090), DummyHandler)
+        blocking_server = socketserver.TCPServer(("", port), DummyHandler)
 
         try:
-            server = LibraryServer(site_dir=site_dir, port=18090)
+            server = LibraryServer(site_dir=site_dir, port=port)
 
             # Should raise an OSError when port is in use
             with pytest.raises(OSError):
@@ -345,23 +353,25 @@ class TestPortHandling:
         site_dir.mkdir(parents=True, exist_ok=True)
         (site_dir / "index.html").write_text("<html><body>Test</body></html>")
 
+        port = _get_random_port_base()
+
         # Occupy the port with another server
         class DummyHandler(socketserver.BaseRequestHandler):
             def handle(self):
                 pass
 
         socketserver.TCPServer.allow_reuse_address = True
-        blocking_server = socketserver.TCPServer(("", 18091), DummyHandler)
+        blocking_server = socketserver.TCPServer(("", port), DummyHandler)
 
         try:
-            server = LibraryServer(site_dir=site_dir, port=18091)
+            server = LibraryServer(site_dir=site_dir, port=port)
 
             # With auto_port=True, should find next available port
             url = server.serve(blocking=False, auto_port=True)
 
             # Should have started on a different port
             assert server.httpd is not None
-            assert server.port != 18091
+            assert server.port != port
             assert str(server.port) in url
         finally:
             blocking_server.server_close()
@@ -377,23 +387,25 @@ class TestPortHandling:
         site_dir.mkdir(parents=True, exist_ok=True)
         (site_dir / "index.html").write_text("<html><body>Test</body></html>")
 
-        # Occupy ports 18092 and 18093
+        port = _get_random_port_base()
+
+        # Occupy two consecutive ports
         class DummyHandler(socketserver.BaseRequestHandler):
             def handle(self):
                 pass
 
         socketserver.TCPServer.allow_reuse_address = True
-        blocking_server1 = socketserver.TCPServer(("", 18092), DummyHandler)
-        blocking_server2 = socketserver.TCPServer(("", 18093), DummyHandler)
+        blocking_server1 = socketserver.TCPServer(("", port), DummyHandler)
+        blocking_server2 = socketserver.TCPServer(("", port + 1), DummyHandler)
 
         try:
-            server = LibraryServer(site_dir=site_dir, port=18092)
+            server = LibraryServer(site_dir=site_dir, port=port)
 
-            # With auto_port=True, should skip 18092 and 18093
+            # With auto_port=True, should skip occupied ports
             url = server.serve(blocking=False, auto_port=True)
 
-            # Should have started on port 18094 or higher
-            assert server.port >= 18094
+            # Should have started on port + 2 or higher
+            assert server.port >= port + 2
             assert str(server.port) in url
         finally:
             blocking_server1.server_close()
@@ -410,6 +422,8 @@ class TestPortHandling:
         site_dir.mkdir(parents=True, exist_ok=True)
         (site_dir / "index.html").write_text("<html><body>Test</body></html>")
 
+        port = _get_random_port_base()
+
         # Occupy 10 consecutive ports
         class DummyHandler(socketserver.BaseRequestHandler):
             def handle(self):
@@ -418,11 +432,11 @@ class TestPortHandling:
         socketserver.TCPServer.allow_reuse_address = True
         blocking_servers = []
         for i in range(10):
-            srv = socketserver.TCPServer(("", 18100 + i), DummyHandler)
+            srv = socketserver.TCPServer(("", port + i), DummyHandler)
             blocking_servers.append(srv)
 
         try:
-            server = LibraryServer(site_dir=site_dir, port=18100)
+            server = LibraryServer(site_dir=site_dir, port=port)
 
             # With auto_port=True but all ports occupied, should raise error
             with pytest.raises(OSError, match="Could not find an available port"):
@@ -440,16 +454,18 @@ class TestPortHandling:
         site_dir.mkdir(parents=True, exist_ok=True)
         (site_dir / "index.html").write_text("<html><body>Test</body></html>")
 
+        port = _get_random_port_base()
+
         # Occupy the port
         class DummyHandler(socketserver.BaseRequestHandler):
             def handle(self):
                 pass
 
         socketserver.TCPServer.allow_reuse_address = True
-        blocking_server = socketserver.TCPServer(("", 18095), DummyHandler)
+        blocking_server = socketserver.TCPServer(("", port), DummyHandler)
 
         try:
-            server = LibraryServer(site_dir=site_dir, port=18095)
+            server = LibraryServer(site_dir=site_dir, port=port)
 
             # Without auto_port, should raise immediately
             with pytest.raises(OSError):
@@ -466,16 +482,18 @@ class TestPortHandling:
         site_dir.mkdir(parents=True, exist_ok=True)
         (site_dir / "index.html").write_text("<html><body>Test</body></html>")
 
+        port = _get_random_port_base()
+
         # Occupy the port
         class DummyHandler(socketserver.BaseRequestHandler):
             def handle(self):
                 pass
 
         socketserver.TCPServer.allow_reuse_address = True
-        blocking_server = socketserver.TCPServer(("", 18096), DummyHandler)
+        blocking_server = socketserver.TCPServer(("", port), DummyHandler)
 
         try:
-            server = LibraryServer(site_dir=site_dir, port=18096)
+            server = LibraryServer(site_dir=site_dir, port=port)
             original_port = server.port
 
             server.serve(blocking=False, auto_port=True)
@@ -497,16 +515,18 @@ class TestPortHandling:
         site_dir.mkdir(parents=True, exist_ok=True)
         (site_dir / "index.html").write_text("<html><body>Test</body></html>")
 
+        port = _get_random_port_base()
+
         # Occupy the port
         class DummyHandler(socketserver.BaseRequestHandler):
             def handle(self):
                 pass
 
         socketserver.TCPServer.allow_reuse_address = True
-        blocking_server = socketserver.TCPServer(("", 18097), DummyHandler)
+        blocking_server = socketserver.TCPServer(("", port), DummyHandler)
 
         try:
-            server = LibraryServer(site_dir=site_dir, port=18097)
+            server = LibraryServer(site_dir=site_dir, port=port)
 
             # By default (no auto_port arg), should raise error on port conflict
             with pytest.raises(OSError):
