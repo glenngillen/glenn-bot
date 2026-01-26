@@ -19,6 +19,7 @@ Caching:
 """
 
 import json
+import time
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Optional, Union
@@ -26,6 +27,13 @@ from typing import Any, Optional, Union
 import requests
 
 from src.library.models import ContentType, LibraryItem
+
+
+# Constants for retry logic
+MAX_RETRIES = 3
+INITIAL_BACKOFF = 1  # seconds
+MAX_BACKOFF = 30  # seconds
+RETRYABLE_STATUS_CODES = {429, 503}
 
 
 class CoverResolver:
@@ -93,12 +101,15 @@ class CoverResolver:
         Constructs the Open Library cover URL and verifies the image exists
         by making a HEAD request to check the response status and content type.
 
+        Implements exponential backoff for rate limiting (429) and service
+        unavailable (503) responses. Respects Retry-After header if present.
+
         Args:
             isbn: The book's ISBN (10 or 13 digits). Hyphens will be stripped.
 
         Returns:
             The cover URL if a valid image exists, None otherwise.
-            Returns None on 404, non-image content type, or network errors.
+            Returns None on 404, non-image content type, or after max retries.
         """
         # Strip hyphens from ISBN
         clean_isbn = isbn.replace("-", "")
@@ -106,23 +117,55 @@ class CoverResolver:
         # Construct the Open Library cover URL
         url = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-L.jpg"
 
-        try:
-            # Make a HEAD request to verify the image exists
-            response = requests.head(url, timeout=10)
+        backoff = INITIAL_BACKOFF
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                # Make a HEAD request to verify the image exists
+                response = requests.head(url, timeout=10)
 
-            # Check if the request was successful
-            if response.status_code != 200:
+                # Check if the request was successful
+                if response.status_code == 200:
+                    # Verify the content type is an image
+                    content_type = response.headers.get("content-type", "")
+                    if content_type.startswith("image/"):
+                        return url
+                    return None
+
+                # Don't retry on 404 (permanent error)
+                if response.status_code == 404:
+                    return None
+
+                # Retry on rate limit or service unavailable
+                if response.status_code in RETRYABLE_STATUS_CODES:
+                    if attempt < MAX_RETRIES:
+                        # Check for Retry-After header
+                        retry_after = response.headers.get("Retry-After")
+                        if retry_after:
+                            try:
+                                delay = max(int(retry_after), backoff)
+                            except ValueError:
+                                delay = backoff
+                        else:
+                            delay = backoff
+
+                        # Cap at maximum backoff
+                        delay = min(delay, MAX_BACKOFF)
+                        time.sleep(delay)
+                        backoff = min(backoff * 2, MAX_BACKOFF)
+                        continue
+
                 return None
 
-            # Verify the content type is an image
-            content_type = response.headers.get("content-type", "")
-            if not content_type.startswith("image/"):
+            except (requests.RequestException, requests.Timeout):
+                # Retry on connection errors
+                if attempt < MAX_RETRIES:
+                    delay = min(backoff, MAX_BACKOFF)
+                    time.sleep(delay)
+                    backoff = min(backoff * 2, MAX_BACKOFF)
+                    continue
                 return None
 
-            return url
-
-        except (requests.RequestException, requests.Timeout):
-            return None
+        return None
 
     def _fetch_cover_by_title(self, title: str) -> Optional[str]:
         """Fetch a book cover URL from Open Library API by title.
@@ -132,6 +175,8 @@ class CoverResolver:
         and content type.
 
         This is a fallback when ISBN lookup fails or is not available.
+        Implements exponential backoff for rate limiting (429) and service
+        unavailable (503) responses. Respects Retry-After header if present.
 
         Args:
             title: The book's title. Will be URL-encoded. Leading/trailing
@@ -140,7 +185,7 @@ class CoverResolver:
         Returns:
             The cover URL if a valid image exists, None otherwise.
             Returns None for empty/whitespace-only titles, 404 responses,
-            non-image content types, or network errors.
+            non-image content types, or after max retries.
         """
         # Handle empty or whitespace-only titles
         if not title or not title.strip():
@@ -157,23 +202,55 @@ class CoverResolver:
         # Construct the Open Library cover URL
         url = f"https://covers.openlibrary.org/b/title/{encoded_title}-L.jpg"
 
-        try:
-            # Make a HEAD request to verify the image exists
-            response = requests.head(url, timeout=10)
+        backoff = INITIAL_BACKOFF
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                # Make a HEAD request to verify the image exists
+                response = requests.head(url, timeout=10)
 
-            # Check if the request was successful
-            if response.status_code != 200:
+                # Check if the request was successful
+                if response.status_code == 200:
+                    # Verify the content type is an image
+                    content_type = response.headers.get("content-type", "")
+                    if content_type.startswith("image/"):
+                        return url
+                    return None
+
+                # Don't retry on 404 (permanent error)
+                if response.status_code == 404:
+                    return None
+
+                # Retry on rate limit or service unavailable
+                if response.status_code in RETRYABLE_STATUS_CODES:
+                    if attempt < MAX_RETRIES:
+                        # Check for Retry-After header
+                        retry_after = response.headers.get("Retry-After")
+                        if retry_after:
+                            try:
+                                delay = max(int(retry_after), backoff)
+                            except ValueError:
+                                delay = backoff
+                        else:
+                            delay = backoff
+
+                        # Cap at maximum backoff
+                        delay = min(delay, MAX_BACKOFF)
+                        time.sleep(delay)
+                        backoff = min(backoff * 2, MAX_BACKOFF)
+                        continue
+
                 return None
 
-            # Verify the content type is an image
-            content_type = response.headers.get("content-type", "")
-            if not content_type.startswith("image/"):
+            except (requests.RequestException, requests.Timeout):
+                # Retry on connection errors
+                if attempt < MAX_RETRIES:
+                    delay = min(backoff, MAX_BACKOFF)
+                    time.sleep(delay)
+                    backoff = min(backoff * 2, MAX_BACKOFF)
+                    continue
                 return None
 
-            return url
-
-        except (requests.RequestException, requests.Timeout):
-            return None
+        return None
 
     def _fetch_cover_from_google_books(self, title: str) -> Optional[str]:
         """Fetch a book cover URL from Google Books API by title.
@@ -182,6 +259,8 @@ class CoverResolver:
         thumbnail URL from the first result's volumeInfo.imageLinks.
 
         This is a fallback when Open Library lookups fail.
+        Implements exponential backoff for rate limiting (429) and service
+        unavailable (503) responses. Respects Retry-After header if present.
 
         Args:
             title: The book's title. Will be URL-encoded. Leading/trailing
@@ -190,7 +269,7 @@ class CoverResolver:
         Returns:
             The cover thumbnail URL if found, None otherwise.
             Returns None for empty/whitespace-only titles, API errors,
-            no results, missing imageLinks, or network errors.
+            no results, missing imageLinks, or after max retries.
             Prefers 'thumbnail' over 'smallThumbnail' if both are available.
         """
         # Handle empty or whitespace-only titles
@@ -208,48 +287,81 @@ class CoverResolver:
         # Construct the Google Books API URL
         url = f"https://www.googleapis.com/books/v1/volumes?q=intitle:{encoded_title}"
 
-        try:
-            # Make a GET request to the API
-            response = requests.get(url, timeout=10)
-
-            # Check if the request was successful
-            if response.status_code != 200:
-                return None
-
-            # Parse the JSON response
+        backoff = INITIAL_BACKOFF
+        for attempt in range(MAX_RETRIES + 1):
             try:
-                data = response.json()
-            except ValueError:
+                # Make a GET request to the API
+                response = requests.get(url, timeout=10)
+
+                # Check if the request was successful
+                if response.status_code == 200:
+                    # Parse the JSON response
+                    try:
+                        data = response.json()
+                    except ValueError:
+                        return None
+
+                    # Check if there are any items in the response
+                    items = data.get("items")
+                    if not items:
+                        return None
+
+                    # Get the first result
+                    first_item = items[0]
+
+                    # Extract volumeInfo
+                    volume_info = first_item.get("volumeInfo")
+                    if not volume_info:
+                        return None
+
+                    # Extract imageLinks
+                    image_links = volume_info.get("imageLinks")
+                    if not image_links:
+                        return None
+
+                    # Prefer 'thumbnail' (larger) over 'smallThumbnail'
+                    if "thumbnail" in image_links:
+                        return image_links["thumbnail"]
+                    elif "smallThumbnail" in image_links:
+                        return image_links["smallThumbnail"]
+
+                    return None
+
+                # Don't retry on 404 (permanent error)
+                if response.status_code == 404:
+                    return None
+
+                # Retry on rate limit or service unavailable
+                if response.status_code in RETRYABLE_STATUS_CODES:
+                    if attempt < MAX_RETRIES:
+                        # Check for Retry-After header
+                        retry_after = response.headers.get("Retry-After")
+                        if retry_after:
+                            try:
+                                delay = max(int(retry_after), backoff)
+                            except ValueError:
+                                delay = backoff
+                        else:
+                            delay = backoff
+
+                        # Cap at maximum backoff
+                        delay = min(delay, MAX_BACKOFF)
+                        time.sleep(delay)
+                        backoff = min(backoff * 2, MAX_BACKOFF)
+                        continue
+
                 return None
 
-            # Check if there are any items in the response
-            items = data.get("items")
-            if not items:
+            except (requests.RequestException, requests.Timeout):
+                # Retry on connection errors
+                if attempt < MAX_RETRIES:
+                    delay = min(backoff, MAX_BACKOFF)
+                    time.sleep(delay)
+                    backoff = min(backoff * 2, MAX_BACKOFF)
+                    continue
                 return None
 
-            # Get the first result
-            first_item = items[0]
-
-            # Extract volumeInfo
-            volume_info = first_item.get("volumeInfo")
-            if not volume_info:
-                return None
-
-            # Extract imageLinks
-            image_links = volume_info.get("imageLinks")
-            if not image_links:
-                return None
-
-            # Prefer 'thumbnail' (larger) over 'smallThumbnail'
-            if "thumbnail" in image_links:
-                return image_links["thumbnail"]
-            elif "smallThumbnail" in image_links:
-                return image_links["smallThumbnail"]
-
-            return None
-
-        except (requests.RequestException, requests.Timeout):
-            return None
+        return None
 
     def get_placeholder_url(self, content_type: ContentType) -> str:
         """Get the placeholder image URL for a given content type.
