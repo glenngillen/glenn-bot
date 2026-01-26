@@ -215,8 +215,8 @@ data/library-site/         # Generated site
 - [x] 101. Implement search.js with Fuse.js CDN (lazy-load, 300ms debounce)
 - [x] 102. Implement sort functionality (Recent, A-Z, By Type)
 - [x] 103. Implement pagination/load-more (50 items per page)
-- [ ] 104. Create `src/library/assets/images/placeholders/` directory
-- [ ] 105. Create 10 SVG placeholder icons (book, article, framework, value, preference, memory, insight, goal, skill, web_content)
+- [x] 104. Create `src/library/assets/images/placeholders/` directory
+- [x] 105. Create 10 SVG placeholder icons (book, article, framework, value, preference, memory, insight, goal, skill, web_content)
 
 ### Phase 8: HTML Templates (8 tasks)
 
