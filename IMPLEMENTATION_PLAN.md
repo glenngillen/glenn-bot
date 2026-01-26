@@ -100,11 +100,11 @@ data/library-site/         # Generated site
 
 ### Phase 2: Core Data Models (12 tasks)
 
-- [ ] 7. Write tests for ContentType enum (10 types: BOOK, ARTICLE, FRAMEWORK, VALUE, PREFERENCE, MEMORY, INSIGHT, GOAL, SKILL, WEB_CONTENT)
-- [ ] 8. Implement ContentType enum in `src/library/models.py`
-- [ ] 9. Write tests for LibraryItem dataclass (id, content_type, title, summary, full_content, source_url, cover_image_url, metadata, themes, created_at, highlights)
-- [ ] 10. Implement LibraryItem dataclass with all fields
-- [ ] 11. Write tests for LibraryItem.to_dict() and LibraryItem.from_dict() serialization
+- [x] 7. Write tests for ContentType enum (10 types: BOOK, ARTICLE, FRAMEWORK, VALUE, PREFERENCE, MEMORY, INSIGHT, GOAL, SKILL, WEB_CONTENT)
+- [x] 8. Implement ContentType enum in `src/library/models.py`
+- [x] 9. Write tests for LibraryItem dataclass (id, content_type, title, summary, full_content, source_url, cover_image_url, metadata, themes, created_at, highlights)
+- [x] 10. Implement LibraryItem dataclass with all fields
+- [x] 11. Write tests for LibraryItem.to_dict() and LibraryItem.from_dict() serialization
 - [ ] 12. Implement LibraryItem serialization methods
 - [ ] 13. Write tests for Theme dataclass (id, name, description, keywords, item_count, created_at, updated_at)
 - [ ] 14. Implement Theme dataclass in `src/library/models.py`
