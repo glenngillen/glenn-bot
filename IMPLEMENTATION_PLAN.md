@@ -204,7 +204,7 @@ data/library-site/         # Generated site
 ### Phase 7: Static Assets (11 tasks)
 
 - [x] 95. Create `src/library/assets/css/` directory
-- [ ] 96. Implement styles.css with design system:
+- [x] 96. Implement styles.css with design system:
   - Background: #FAFAFA, Cards: #FFFFFF
   - Text: #1A1A1A (primary), #666666 (secondary)
   - Accent: #2563EB
