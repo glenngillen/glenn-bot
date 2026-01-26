@@ -768,3 +768,219 @@ class TestSaveAssignments:
 
         # JSON should preserve float precision
         assert data[0]["confidence"] == 0.123456789
+
+
+class TestLoadAssignments:
+    """Tests for load_assignments() method that reads assignments from assignments.json."""
+
+    def test_load_assignments_reads_from_assignments_file(self, mock_ollama_client, temp_dir):
+        """load_assignments() should read from assignments.json file in data_dir."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create an assignments.json file
+        assignment_data = [
+            {
+                "item_id": "item-123",
+                "theme_id": "personal-growth",
+                "confidence": 0.85,
+                "assigned_at": "2026-01-15T10:00:00",
+            }
+        ]
+        with open(data_dir / "assignments.json", "w") as f:
+            json.dump(assignment_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_assignments()
+
+        assert len(generator.assignments) == 1
+
+    def test_load_assignments_parses_assignment_objects_correctly(self, mock_ollama_client, temp_dir):
+        """load_assignments() should parse JSON into ThemeAssignment objects with correct fields."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        assignment_data = [
+            {
+                "item_id": "book-456",
+                "theme_id": "systems-thinking",
+                "confidence": 0.92,
+                "assigned_at": "2026-01-20T14:30:00",
+            }
+        ]
+        with open(data_dir / "assignments.json", "w") as f:
+            json.dump(assignment_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_assignments()
+
+        assignment = generator.assignments[0]
+        assert isinstance(assignment, ThemeAssignment)
+        assert assignment.item_id == "book-456"
+        assert assignment.theme_id == "systems-thinking"
+        assert assignment.confidence == 0.92
+        assert assignment.assigned_at == datetime(2026, 1, 20, 14, 30, 0)
+
+    def test_load_assignments_loads_multiple_assignments(self, mock_ollama_client, temp_dir):
+        """load_assignments() should load multiple assignments from assignments.json."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        assignment_data = [
+            {
+                "item_id": "item-123",
+                "theme_id": "personal-growth",
+                "confidence": 0.85,
+                "assigned_at": "2026-01-15T10:00:00",
+            },
+            {
+                "item_id": "item-123",
+                "theme_id": "technology",
+                "confidence": 0.45,
+                "assigned_at": "2026-01-15T10:00:00",
+            },
+            {
+                "item_id": "item-456",
+                "theme_id": "personal-growth",
+                "confidence": 0.72,
+                "assigned_at": "2026-01-16T11:00:00",
+            },
+        ]
+        with open(data_dir / "assignments.json", "w") as f:
+            json.dump(assignment_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_assignments()
+
+        assert len(generator.assignments) == 3
+        assert generator.assignments[0].item_id == "item-123"
+        assert generator.assignments[0].theme_id == "personal-growth"
+        assert generator.assignments[1].item_id == "item-123"
+        assert generator.assignments[1].theme_id == "technology"
+        assert generator.assignments[2].item_id == "item-456"
+
+    def test_load_assignments_handles_empty_file(self, mock_ollama_client, temp_dir):
+        """load_assignments() should handle empty assignments list gracefully."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create an empty JSON array
+        with open(data_dir / "assignments.json", "w") as f:
+            json.dump([], f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_assignments()
+
+        assert generator.assignments == []
+
+    def test_load_assignments_handles_missing_file(self, mock_ollama_client, temp_dir):
+        """load_assignments() should return empty list when assignments.json doesn't exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Don't create assignments.json file
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_assignments()
+
+        assert generator.assignments == []
+
+    def test_load_assignments_replaces_existing_assignments(self, mock_ollama_client, temp_dir):
+        """load_assignments() should replace any existing assignments in memory."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create assignments.json with new data
+        assignment_data = [
+            {
+                "item_id": "new-item",
+                "theme_id": "new-theme",
+                "confidence": 0.99,
+                "assigned_at": "2026-01-26T12:00:00",
+            }
+        ]
+        with open(data_dir / "assignments.json", "w") as f:
+            json.dump(assignment_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set some existing assignments in memory
+        existing_assignment = ThemeAssignment(
+            item_id="existing-item",
+            theme_id="existing-theme",
+            confidence=0.5,
+            assigned_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        generator.assignments = [existing_assignment]
+
+        generator.load_assignments()
+
+        # Should have replaced with file contents
+        assert len(generator.assignments) == 1
+        assert generator.assignments[0].item_id == "new-item"
+
+    def test_load_assignments_returns_loaded_assignments(self, mock_ollama_client, temp_dir):
+        """load_assignments() should return the list of loaded assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        assignment_data = [
+            {
+                "item_id": "test-item",
+                "theme_id": "test-theme",
+                "confidence": 0.75,
+                "assigned_at": "2026-01-26T12:00:00",
+            }
+        ]
+        with open(data_dir / "assignments.json", "w") as f:
+            json.dump(assignment_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        result = generator.load_assignments()
+
+        assert result == generator.assignments
+        assert len(result) == 1
+        assert result[0].item_id == "test-item"
+
+    def test_load_assignments_preserves_float_precision(self, mock_ollama_client, temp_dir):
+        """load_assignments() should preserve confidence score precision when loading."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        assignment_data = [
+            {
+                "item_id": "item-123",
+                "theme_id": "test-theme",
+                "confidence": 0.123456789,
+                "assigned_at": "2026-01-26T12:00:00",
+            }
+        ]
+        with open(data_dir / "assignments.json", "w") as f:
+            json.dump(assignment_data, f)
+
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.load_assignments()
+
+        assert generator.assignments[0].confidence == 0.123456789
