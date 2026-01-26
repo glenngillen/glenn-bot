@@ -20,11 +20,12 @@ Caching:
 
 import json
 from pathlib import Path
+from datetime import datetime
 from typing import Any, Optional, Union
 
 import requests
 
-from src.library.models import ContentType
+from src.library.models import ContentType, LibraryItem
 
 
 class CoverResolver:
@@ -269,3 +270,67 @@ class CoverResolver:
 
         # Return the path relative to placeholders directory
         return f"assets/images/placeholders/{filename}"
+
+    def resolve_cover(self, item: LibraryItem) -> str:
+        """Resolve the cover image URL for a library item.
+
+        Implements the full resolution flow:
+        1. Check cache - if item is cached, return the cached URL
+        2. For books: try ISBN lookup (if ISBN available) -> title lookup -> Google Books
+        3. For non-books: use placeholder directly
+        4. Cache the result and save to disk
+
+        Args:
+            item: The LibraryItem to resolve a cover for.
+
+        Returns:
+            The resolved cover image URL. For books, this may be an Open Library
+            or Google Books URL. For non-books (or when all API lookups fail),
+            this will be a placeholder image path.
+        """
+        # Step 1: Check cache first
+        if item.id in self.cache:
+            return self.cache[item.id]["url"]
+
+        # Step 2: Determine the cover URL based on content type
+        cover_url: Optional[str] = None
+        source: str = "placeholder"
+
+        if item.content_type == ContentType.BOOK:
+            # For books, try API lookups in order of priority
+            isbn = item.metadata.get("isbn") if item.metadata else None
+
+            # Try ISBN lookup first (if ISBN is available)
+            if isbn:
+                cover_url = self._fetch_cover_by_isbn(isbn)
+                if cover_url:
+                    source = "open_library_isbn"
+
+            # Fall back to title lookup
+            if not cover_url:
+                cover_url = self._fetch_cover_by_title(item.title)
+                if cover_url:
+                    source = "open_library_title"
+
+            # Fall back to Google Books
+            if not cover_url:
+                cover_url = self._fetch_cover_from_google_books(item.title)
+                if cover_url:
+                    source = "google_books"
+
+        # Step 3: Use placeholder if no cover found (or for non-books)
+        if not cover_url:
+            cover_url = self.get_placeholder_url(item.content_type)
+            source = "placeholder"
+
+        # Step 4: Cache the result with metadata
+        self.cache[item.id] = {
+            "url": cover_url,
+            "resolved_at": datetime.now().isoformat(),
+            "source": source,
+        }
+
+        # Step 5: Save cache to disk
+        self._save_cache()
+
+        return cover_url
