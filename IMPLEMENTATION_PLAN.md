@@ -133,7 +133,7 @@ data/library-site/         # Generated site
 
 ### Phase 4: Theme Generation (29 tasks)
 
-- [ ] 34. Create test file `tests/test_theme_generator.py`
+- [x] 34. Create test file `tests/test_theme_generator.py`
 - [ ] 35. Write tests for ThemeGenerator initialization with OllamaClient and data_dir
 - [ ] 36. Implement ThemeGenerator class skeleton in `src/library/theme_generator.py`
 - [ ] 37. Write tests for save_themes() persisting to themes.json
