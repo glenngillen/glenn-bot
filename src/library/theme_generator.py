@@ -268,3 +268,42 @@ Important:
             return response[start_idx : end_idx + 1]
 
         return None
+
+    def generate_themes(self, items: list[LibraryItem]) -> list[Theme]:
+        """Generate themes from library items using AI.
+
+        Orchestrates the theme generation process by:
+        1. Building a prompt from the provided items
+        2. Calling OllamaClient.generate() to get AI-generated themes
+        3. Parsing the response into Theme objects
+        4. Saving the themes to disk
+        5. Updating self.themes with the generated themes
+
+        Args:
+            items: List of LibraryItem objects to analyze for theme generation.
+
+        Returns:
+            List of Theme objects generated from the content. Returns empty
+            list if generation fails or no themes could be parsed.
+        """
+        # Build the prompt from items
+        prompt = self._build_theme_generation_prompt(items)
+
+        # Call OllamaClient to generate themes
+        system_prompt = (
+            "You are a knowledge organization expert. Analyze content and identify "
+            "thematic categories. Always respond with valid JSON arrays only."
+        )
+        response = self.ollama_client.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+        )
+
+        # Parse the response into Theme objects
+        themes = self._parse_themes_from_response(response)
+
+        # Update self.themes and save to disk
+        self.themes = themes
+        self.save_themes()
+
+        return themes
