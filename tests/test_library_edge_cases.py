@@ -1921,3 +1921,622 @@ class TestSmallKnowledgeBaseMinimumThemes:
 
         # Should have at least 3 themes
         assert result["themes_count"] >= 3
+
+
+class TestFullBuildProcessIntegration:
+    """Integration tests for the full build process (Task 185).
+
+    These tests verify that all components work together correctly
+    to produce a complete, functional static site from knowledge base content.
+    """
+
+    def test_full_build_creates_complete_site_structure(self, temp_dir):
+        """Full build should create all expected files and directories."""
+        from src.library.builder import LibraryBuilder
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "book-1",
+                    "content": "A book about systems thinking and complexity.",
+                    "metadata": {
+                        "type": "book",
+                        "name": "Thinking in Systems",
+                        "source": "https://example.com/book1",
+                    },
+                },
+                {
+                    "id": "article-1",
+                    "content": "An article about productivity and time management.",
+                    "metadata": {
+                        "type": "web",
+                        "name": "Getting Things Done",
+                        "source": "https://example.com/article1",
+                    },
+                },
+                {
+                    "id": "value-1",
+                    "content": "Continuous learning is essential for growth.",
+                    "metadata": {
+                        "type": "value",
+                        "name": "Continuous Learning",
+                    },
+                },
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            # Theme generation response
+            """[
+                {"id": "systems-thinking", "name": "Systems Thinking", "description": "Understanding complex systems", "keywords": ["systems", "complexity"]},
+                {"id": "productivity", "name": "Productivity", "description": "Getting things done", "keywords": ["productivity", "time"]},
+                {"id": "personal-growth", "name": "Personal Growth", "description": "Self improvement", "keywords": ["growth", "learning"]}
+            ]""",
+            # Assignment response
+            """[
+                {"item_id": "book-1", "theme_id": "systems-thinking", "confidence": 0.9},
+                {"item_id": "article-1", "theme_id": "productivity", "confidence": 0.85},
+                {"item_id": "value-1", "theme_id": "personal-growth", "confidence": 0.8}
+            ]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        result = builder.build()
+
+        # Verify build summary
+        assert result["items_count"] == 3
+        assert result["themes_count"] >= 3
+        assert result["pages_generated"] > 0
+        assert "last_build" in result
+
+        # Verify core site structure
+        assert (site_dir / "index.html").exists()
+        assert (site_dir / "all" / "index.html").exists()
+        assert (site_dir / "search" / "index.html").exists()
+
+        # Verify theme pages created
+        assert (site_dir / "theme" / "systems-thinking" / "index.html").exists()
+        assert (site_dir / "theme" / "productivity" / "index.html").exists()
+        assert (site_dir / "theme" / "personal-growth" / "index.html").exists()
+
+        # Verify item pages created
+        assert (site_dir / "item" / "book-1" / "index.html").exists()
+        assert (site_dir / "item" / "article-1" / "index.html").exists()
+        assert (site_dir / "item" / "value-1" / "index.html").exists()
+
+        # Verify assets copied
+        assert (site_dir / "assets" / "css" / "styles.css").exists()
+        assert (site_dir / "assets" / "js" / "search.js").exists()
+        assert (site_dir / "assets" / "js" / "search-index.json").exists()
+
+        # Verify placeholder images copied
+        assert (site_dir / "assets" / "images" / "placeholders").exists()
+
+        # Verify build state saved
+        assert (site_dir / "_build_state.json").exists()
+
+        # Verify library.json debug file created
+        assert (site_dir / "_data" / "library.json").exists()
+
+        # Verify persistent data files created
+        assert (data_dir / "themes.json").exists()
+        assert (data_dir / "assignments.json").exists()
+
+    def test_full_build_items_linked_to_correct_themes(self, temp_dir):
+        """Items should be correctly linked to their assigned themes."""
+        from src.library.builder import LibraryBuilder
+        import json
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "item-alpha",
+                    "content": "Content about topic alpha",
+                    "metadata": {"type": "framework", "name": "Alpha Framework"},
+                },
+                {
+                    "id": "item-beta",
+                    "content": "Content about topic beta",
+                    "metadata": {"type": "value", "name": "Beta Value"},
+                },
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            # Theme generation
+            """[
+                {"id": "theme-x", "name": "Theme X", "description": "X theme", "keywords": []},
+                {"id": "theme-y", "name": "Theme Y", "description": "Y theme", "keywords": []},
+                {"id": "theme-z", "name": "Theme Z", "description": "Z theme", "keywords": []}
+            ]""",
+            # Assignments - item-alpha to theme-x, item-beta to theme-y
+            """[
+                {"item_id": "item-alpha", "theme_id": "theme-x", "confidence": 0.9},
+                {"item_id": "item-beta", "theme_id": "theme-y", "confidence": 0.85}
+            ]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        builder.build()
+
+        # Check library.json has correct theme assignments
+        library_json = json.loads((site_dir / "_data" / "library.json").read_text())
+
+        item_alpha = next(i for i in library_json["items"] if i["id"] == "item-alpha")
+        item_beta = next(i for i in library_json["items"] if i["id"] == "item-beta")
+
+        assert "theme-x" in item_alpha["themes"]
+        assert "theme-y" in item_beta["themes"]
+
+        # Check item detail pages mention their themes
+        alpha_content = (site_dir / "item" / "item-alpha" / "index.html").read_text()
+        beta_content = (site_dir / "item" / "item-beta" / "index.html").read_text()
+
+        assert "Theme X" in alpha_content
+        assert "Theme Y" in beta_content
+
+    def test_full_build_search_index_contains_all_items(self, temp_dir):
+        """Search index should contain all items with correct data."""
+        from src.library.builder import LibraryBuilder
+        import json
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "searchable-1",
+                    "content": "Content for searchable item one",
+                    "metadata": {"type": "book", "name": "Searchable Book"},
+                },
+                {
+                    "id": "searchable-2",
+                    "content": "Content for searchable item two",
+                    "metadata": {"type": "article", "name": "Searchable Article"},
+                },
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "search-theme", "name": "Search Theme", "description": "For search", "keywords": []},
+                {"id": "other-theme", "name": "Other Theme", "description": "Another", "keywords": []},
+                {"id": "third-theme", "name": "Third Theme", "description": "Third", "keywords": []}
+            ]""",
+            """[
+                {"item_id": "searchable-1", "theme_id": "search-theme", "confidence": 0.9},
+                {"item_id": "searchable-2", "theme_id": "search-theme", "confidence": 0.8}
+            ]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        builder.build()
+
+        # Load search index
+        search_index = json.loads(
+            (site_dir / "assets" / "js" / "search-index.json").read_text()
+        )
+
+        assert "items" in search_index
+        assert len(search_index["items"]) == 2
+
+        # Check items have required fields for search
+        for item in search_index["items"]:
+            assert "id" in item
+            assert "title" in item
+            assert "summary" in item
+            assert "url" in item
+            assert "content_type" in item
+
+        # Check specific items
+        item_ids = [i["id"] for i in search_index["items"]]
+        assert "searchable-1" in item_ids
+        assert "searchable-2" in item_ids
+
+    def test_full_build_incremental_preserves_themes(self, temp_dir):
+        """Subsequent builds should preserve existing themes."""
+        from src.library.builder import LibraryBuilder
+        import json
+
+        mock_knowledge_base = MagicMock()
+        mock_ollama = MagicMock()
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        # First build
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "initial-item",
+                    "content": "Initial content",
+                    "metadata": {"type": "value", "name": "Initial Value"},
+                },
+            ]
+        }
+
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "initial-theme", "name": "Initial Theme", "description": "First", "keywords": []},
+                {"id": "second-theme", "name": "Second Theme", "description": "Second", "keywords": []},
+                {"id": "third-theme", "name": "Third Theme", "description": "Third", "keywords": []}
+            ]""",
+            """[{"item_id": "initial-item", "theme_id": "initial-theme", "confidence": 0.9}]""",
+        ]
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        result1 = builder.build()
+        themes_after_first = json.loads((data_dir / "themes.json").read_text())
+
+        # Second build with new item (simulating incremental)
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "initial-item",
+                    "content": "Initial content",
+                    "metadata": {"type": "value", "name": "Initial Value"},
+                },
+                {
+                    "id": "new-item",
+                    "content": "New content added",
+                    "metadata": {"type": "book", "name": "New Book"},
+                },
+            ]
+        }
+
+        # Reset the side_effect for incremental assignment only
+        mock_ollama.generate.side_effect = [
+            """[{"item_id": "new-item", "theme_id": "initial-theme", "confidence": 0.8}]""",
+        ]
+
+        result2 = builder.build()
+        themes_after_second = json.loads((data_dir / "themes.json").read_text())
+
+        # Themes should be preserved
+        assert len(themes_after_first) == len(themes_after_second)
+
+        # New item should be added
+        assert result2["items_count"] == 2
+
+    def test_full_build_force_regenerates_everything(self, temp_dir):
+        """Force build should regenerate all themes and assignments."""
+        from src.library.builder import LibraryBuilder
+        import json
+
+        mock_knowledge_base = MagicMock()
+        mock_ollama = MagicMock()
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        # First build
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "test-item",
+                    "content": "Test content",
+                    "metadata": {"type": "framework", "name": "Test Framework"},
+                },
+            ]
+        }
+
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "old-theme", "name": "Old Theme", "description": "Old", "keywords": []},
+                {"id": "theme-two", "name": "Theme Two", "description": "Two", "keywords": []},
+                {"id": "theme-three", "name": "Theme Three", "description": "Three", "keywords": []}
+            ]""",
+            """[{"item_id": "test-item", "theme_id": "old-theme", "confidence": 0.9}]""",
+        ]
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        builder.build()
+
+        # Force rebuild with different theme generation response
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "new-theme", "name": "New Theme", "description": "New", "keywords": []},
+                {"id": "fresh-theme", "name": "Fresh Theme", "description": "Fresh", "keywords": []},
+                {"id": "another-theme", "name": "Another Theme", "description": "Another", "keywords": []}
+            ]""",
+            """[{"item_id": "test-item", "theme_id": "new-theme", "confidence": 0.95}]""",
+        ]
+
+        builder.build(force=True)
+
+        # Check that new themes were generated
+        themes = json.loads((data_dir / "themes.json").read_text())
+        theme_ids = [t["id"] for t in themes]
+
+        assert "new-theme" in theme_ids
+        assert "fresh-theme" in theme_ids
+
+    def test_full_build_all_content_types_supported(self, temp_dir):
+        """Build should handle all supported content types correctly."""
+        from src.library.builder import LibraryBuilder
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {"id": "type-book", "content": "A book", "metadata": {"type": "book", "name": "Book"}},
+                {"id": "type-value", "content": "A value", "metadata": {"type": "value", "name": "Value"}},
+                {"id": "type-framework", "content": "A framework", "metadata": {"type": "framework", "name": "Framework"}},
+                {"id": "type-preference", "content": "A preference", "metadata": {"type": "preference", "name": "Preference"}},
+                {"id": "type-memory", "content": "A memory", "metadata": {"type": "memory", "name": "Memory"}},
+                {"id": "type-web", "content": "Web content", "metadata": {"type": "web", "name": "Web Content"}},
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "general", "name": "General", "description": "General content", "keywords": []},
+                {"id": "specific", "name": "Specific", "description": "Specific content", "keywords": []},
+                {"id": "other", "name": "Other", "description": "Other content", "keywords": []}
+            ]""",
+            """[
+                {"item_id": "type-book", "theme_id": "general", "confidence": 0.8},
+                {"item_id": "type-value", "theme_id": "general", "confidence": 0.8},
+                {"item_id": "type-framework", "theme_id": "general", "confidence": 0.8},
+                {"item_id": "type-preference", "theme_id": "specific", "confidence": 0.8},
+                {"item_id": "type-memory", "theme_id": "specific", "confidence": 0.8},
+                {"item_id": "type-web", "theme_id": "other", "confidence": 0.8}
+            ]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        result = builder.build()
+
+        # All items should be processed
+        assert result["items_count"] == 6
+
+        # Each item should have its own page
+        for item_id in ["type-book", "type-value", "type-framework", "type-preference", "type-memory", "type-web"]:
+            assert (site_dir / "item" / item_id / "index.html").exists()
+
+    def test_full_build_handles_special_characters_in_content(self, temp_dir):
+        """Build should properly escape special characters in content."""
+        from src.library.builder import LibraryBuilder
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "special-chars",
+                    "content": "Content with <script>alert('XSS')</script> and & ampersand",
+                    "metadata": {
+                        "type": "value",
+                        "name": "Value with <tags> & \"quotes\"",
+                    },
+                },
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "safe-theme", "name": "Safe Theme", "description": "Desc", "keywords": []},
+                {"id": "theme-two", "name": "Theme Two", "description": "Two", "keywords": []},
+                {"id": "theme-three", "name": "Theme Three", "description": "Three", "keywords": []}
+            ]""",
+            """[{"item_id": "special-chars", "theme_id": "safe-theme", "confidence": 0.9}]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        result = builder.build()
+
+        # Build should complete
+        assert result["items_count"] == 1
+
+        # Check that HTML is properly escaped
+        item_content = (site_dir / "item" / "special-chars" / "index.html").read_text()
+        assert "<script>" not in item_content
+        assert "&lt;script&gt;" in item_content
+
+    def test_full_build_home_page_shows_themes(self, temp_dir):
+        """Home page should display all themes as navigable cards."""
+        from src.library.builder import LibraryBuilder
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "item-1",
+                    "content": "Content",
+                    "metadata": {"type": "book", "name": "Book 1"},
+                },
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "displayed-theme-1", "name": "Displayed Theme One", "description": "First theme", "keywords": []},
+                {"id": "displayed-theme-2", "name": "Displayed Theme Two", "description": "Second theme", "keywords": []},
+                {"id": "displayed-theme-3", "name": "Displayed Theme Three", "description": "Third theme", "keywords": []}
+            ]""",
+            """[{"item_id": "item-1", "theme_id": "displayed-theme-1", "confidence": 0.9}]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        builder.build()
+
+        home_content = (site_dir / "index.html").read_text()
+
+        # All themes should appear on home page
+        assert "Displayed Theme One" in home_content
+        assert "Displayed Theme Two" in home_content
+        assert "Displayed Theme Three" in home_content
+
+        # Theme links should be present
+        assert "/theme/displayed-theme-1/" in home_content
+        assert "/theme/displayed-theme-2/" in home_content
+        assert "/theme/displayed-theme-3/" in home_content
+
+    def test_full_build_all_page_shows_all_items(self, temp_dir):
+        """All page should display all items regardless of theme."""
+        from src.library.builder import LibraryBuilder
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {"id": "all-item-1", "content": "First", "metadata": {"type": "book", "name": "All Item One"}},
+                {"id": "all-item-2", "content": "Second", "metadata": {"type": "value", "name": "All Item Two"}},
+                {"id": "all-item-3", "content": "Third", "metadata": {"type": "framework", "name": "All Item Three"}},
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "all-theme", "name": "All Theme", "description": "All", "keywords": []},
+                {"id": "theme-b", "name": "Theme B", "description": "B", "keywords": []},
+                {"id": "theme-c", "name": "Theme C", "description": "C", "keywords": []}
+            ]""",
+            """[
+                {"item_id": "all-item-1", "theme_id": "all-theme", "confidence": 0.9},
+                {"item_id": "all-item-2", "theme_id": "theme-b", "confidence": 0.8},
+                {"item_id": "all-item-3", "theme_id": "theme-c", "confidence": 0.7}
+            ]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        builder.build()
+
+        all_content = (site_dir / "all" / "index.html").read_text()
+
+        # All items should appear
+        assert "All Item One" in all_content
+        assert "All Item Two" in all_content
+        assert "All Item Three" in all_content
+
+        # Links to detail pages should be present
+        assert "/item/all-item-1/" in all_content
+        assert "/item/all-item-2/" in all_content
+        assert "/item/all-item-3/" in all_content
+
+    def test_full_build_theme_page_shows_assigned_items(self, temp_dir):
+        """Theme page should show only items assigned to that theme."""
+        from src.library.builder import LibraryBuilder
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {"id": "theme-a-item", "content": "For A", "metadata": {"type": "book", "name": "Theme A Item"}},
+                {"id": "theme-b-item", "content": "For B", "metadata": {"type": "value", "name": "Theme B Item"}},
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "theme-alpha", "name": "Theme Alpha", "description": "Alpha", "keywords": []},
+                {"id": "theme-beta", "name": "Theme Beta", "description": "Beta", "keywords": []},
+                {"id": "theme-gamma", "name": "Theme Gamma", "description": "Gamma", "keywords": []}
+            ]""",
+            """[
+                {"item_id": "theme-a-item", "theme_id": "theme-alpha", "confidence": 0.9},
+                {"item_id": "theme-b-item", "theme_id": "theme-beta", "confidence": 0.85}
+            ]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        builder.build()
+
+        # Check theme-alpha page
+        alpha_content = (site_dir / "theme" / "theme-alpha" / "index.html").read_text()
+        assert "Theme A Item" in alpha_content
+        assert "Theme B Item" not in alpha_content
+
+        # Check theme-beta page
+        beta_content = (site_dir / "theme" / "theme-beta" / "index.html").read_text()
+        assert "Theme B Item" in beta_content
+        assert "Theme A Item" not in beta_content

@@ -314,7 +314,7 @@ data/library-site/         # Generated site
 - [x] 182. Implement conditional highlights section
 - [x] 183. Write tests for small knowledge base (minimum 3 themes)
 - [x] 184. Implement minimum theme count logic
-- [ ] 185. Write integration test for full build process
+- [x] 185. Write integration test for full build process
 - [ ] 186. Write integration test for valid HTML output
 
 ## Notes
