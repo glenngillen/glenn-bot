@@ -165,12 +165,12 @@ data/library-site/         # Generated site
 
 ### Phase 5: Cover Image Resolution (21 tasks)
 
-- [ ] 63. Create test file `tests/test_cover_resolver.py`
-- [ ] 64. Write tests for CoverResolver initialization with cache_dir
+- [x] 63. Create test file `tests/test_cover_resolver.py`
+- [x] 64. Write tests for CoverResolver initialization with cache_dir
 - [ ] 65. Implement CoverResolver class skeleton in `src/library/cover_resolver.py`
-- [ ] 66. Write tests for _load_cache() reading cover_cache.json
+- [x] 66. Write tests for _load_cache() reading cover_cache.json
 - [ ] 67. Implement _load_cache() method
-- [ ] 68. Write tests for _save_cache() persisting cover_cache.json
+- [x] 68. Write tests for _save_cache() persisting cover_cache.json
 - [ ] 69. Implement _save_cache() method
 - [ ] 70. Write tests for _fetch_cover_by_isbn() calling Open Library API
 - [ ] 71. Implement _fetch_cover_by_isbn() using requests library
