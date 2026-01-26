@@ -255,22 +255,22 @@ data/library-site/         # Generated site
 
 ### Phase 10: Build Process & Caching (17 tasks)
 
-- [ ] 135. Create test file `tests/test_library_builder.py`
-- [ ] 136. Write tests for LibraryBuilder initialization
+- [x] 135. Create test file `tests/test_library_builder.py`
+- [x] 136. Write tests for LibraryBuilder initialization
 - [ ] 137. Implement LibraryBuilder class in `src/library/builder.py`
-- [ ] 138. Write tests for _load_build_state() reading _build_state.json
+- [x] 138. Write tests for _load_build_state() reading _build_state.json
 - [ ] 139. Implement _load_build_state() method
-- [ ] 140. Write tests for _save_build_state() persisting state
+- [x] 140. Write tests for _save_build_state() persisting state
 - [ ] 141. Implement _save_build_state() method
-- [ ] 142. Write tests for _compute_item_hash() generating content hash
+- [x] 142. Write tests for _compute_item_hash() generating content hash
 - [ ] 143. Implement _compute_item_hash() method
-- [ ] 144. Write tests for _get_changed_items() detecting modifications
+- [x] 144. Write tests for _get_changed_items() detecting modifications
 - [ ] 145. Implement _get_changed_items() method
-- [ ] 146. Write tests for build() orchestration (export -> covers -> themes -> index -> pages)
+- [x] 146. Write tests for build() orchestration (export -> covers -> themes -> index -> pages)
 - [ ] 147. Implement build() method
-- [ ] 148. Write tests for build() with force=True
+- [x] 148. Write tests for build() with force=True
 - [ ] 149. Implement force flag handling
-- [ ] 150. Write tests for _export_library_json() creating debug file
+- [x] 150. Write tests for _export_library_json() creating debug file
 - [ ] 151. Implement _export_library_json() method
 
 ### Phase 11: Local Server (7 tasks)
