@@ -172,7 +172,7 @@ data/library-site/         # Generated site
 - [x] 67. Implement _load_cache() method
 - [x] 68. Write tests for _save_cache() persisting cover_cache.json
 - [x] 69. Implement _save_cache() method
-- [ ] 70. Write tests for _fetch_cover_by_isbn() calling Open Library API
+- [x] 70. Write tests for _fetch_cover_by_isbn() calling Open Library API
 - [ ] 71. Implement _fetch_cover_by_isbn() using requests library
 - [ ] 72. Write tests for _fetch_cover_by_title() calling Open Library API
 - [ ] 73. Implement _fetch_cover_by_title() fallback
