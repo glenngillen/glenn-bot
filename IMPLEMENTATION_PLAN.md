@@ -123,7 +123,7 @@ data/library-site/         # Generated site
 - [x] 24. Write tests for _generate_title() when metadata lacks 'name' (first 50 chars)
 - [x] 25. Implement _generate_title() title generation
 - [x] 26. Write tests for _generate_summary() truncation (200 char limit with ellipsis)
-- [ ] 27. Implement _generate_summary() summary truncation logic
+- [x] 27. Implement _generate_summary() summary truncation logic
 - [ ] 28. Write tests for _extract_highlights() (key_points from values, steps from frameworks)
 - [ ] 29. Implement _extract_highlights() extraction by content type
 - [ ] 30. Write tests for _convert_document() transforming ChromaDB doc to LibraryItem

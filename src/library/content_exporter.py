@@ -96,3 +96,30 @@ class ContentExporter:
             return stripped
 
         return stripped[:50] + "..."
+
+    def _generate_summary(self, content: Optional[str]) -> str:
+        """Generate a display summary from content.
+
+        Truncates content to 200 characters with ellipsis if necessary.
+        Leading and trailing whitespace is stripped before truncation.
+
+        Args:
+            content: Document content text, may be None.
+
+        Returns:
+            A summary string, truncated to 200 characters with "..."
+            if the content exceeds that length. Returns empty string
+            for None, empty, or whitespace-only content.
+        """
+        if not content:
+            return ""
+
+        stripped = content.strip()
+        if not stripped:
+            return ""
+
+        # Truncate at 200 characters with ellipsis if needed
+        if len(stripped) <= 200:
+            return stripped
+
+        return stripped[:200] + "..."
