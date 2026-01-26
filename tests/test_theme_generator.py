@@ -1337,3 +1337,417 @@ class TestBuildThemeGenerationPrompt:
 
         # Should mention the id field (as slug format)
         assert "id" in prompt.lower() or "slug" in prompt.lower()
+
+
+class TestParseThemesFromResponse:
+    """Tests for _parse_themes_from_response() method that parses LLM output into Theme objects."""
+
+    def test_parse_themes_from_response_returns_list_of_themes(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should return a list of Theme objects."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement and learning",
+                "keywords": ["growth", "learning", "habits"]
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert isinstance(themes, list)
+        assert len(themes) == 1
+        assert isinstance(themes[0], Theme)
+
+    def test_parse_themes_from_response_extracts_id_correctly(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should extract the id field correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "systems-thinking",
+                "name": "Systems Thinking",
+                "description": "Understanding complex systems",
+                "keywords": ["systems", "complexity"]
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes[0].id == "systems-thinking"
+
+    def test_parse_themes_from_response_extracts_name_correctly(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should extract the name field correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "tech-innovation",
+                "name": "Technology & Innovation",
+                "description": "Tech trends and innovations",
+                "keywords": ["technology", "innovation"]
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes[0].name == "Technology & Innovation"
+
+    def test_parse_themes_from_response_extracts_description_correctly(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should extract the description field correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "business",
+                "name": "Business",
+                "description": "Entrepreneurship, management, and strategy",
+                "keywords": ["business", "strategy"]
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes[0].description == "Entrepreneurship, management, and strategy"
+
+    def test_parse_themes_from_response_extracts_keywords_correctly(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should extract the keywords list correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "communication",
+                "name": "Communication",
+                "description": "Writing, speaking, and relationships",
+                "keywords": ["writing", "speaking", "relationships", "clarity"]
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes[0].keywords == ["writing", "speaking", "relationships", "clarity"]
+
+    def test_parse_themes_from_response_sets_item_count_to_zero(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should set item_count to 0 for new themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement",
+                "keywords": ["growth"]
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes[0].item_count == 0
+
+    def test_parse_themes_from_response_sets_created_at_timestamp(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should set created_at to current time."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement",
+                "keywords": ["growth"]
+            }
+        ]'''
+
+        before = datetime.now()
+        themes = generator._parse_themes_from_response(response)
+        after = datetime.now()
+
+        assert before <= themes[0].created_at <= after
+
+    def test_parse_themes_from_response_sets_updated_at_timestamp(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should set updated_at to current time."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement",
+                "keywords": ["growth"]
+            }
+        ]'''
+
+        before = datetime.now()
+        themes = generator._parse_themes_from_response(response)
+        after = datetime.now()
+
+        assert before <= themes[0].updated_at <= after
+
+    def test_parse_themes_from_response_parses_multiple_themes(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should parse multiple themes from the response."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement and learning",
+                "keywords": ["growth", "learning"]
+            },
+            {
+                "id": "technology",
+                "name": "Technology",
+                "description": "Software and tech innovations",
+                "keywords": ["software", "tech"]
+            },
+            {
+                "id": "business",
+                "name": "Business",
+                "description": "Entrepreneurship and strategy",
+                "keywords": ["business", "strategy"]
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert len(themes) == 3
+        assert themes[0].id == "personal-growth"
+        assert themes[1].id == "technology"
+        assert themes[2].id == "business"
+
+    def test_parse_themes_from_response_handles_json_with_markdown_code_block(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should handle JSON wrapped in markdown code blocks."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''```json
+[
+    {
+        "id": "personal-growth",
+        "name": "Personal Growth",
+        "description": "Self-improvement",
+        "keywords": ["growth"]
+    }
+]
+```'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert len(themes) == 1
+        assert themes[0].id == "personal-growth"
+
+    def test_parse_themes_from_response_handles_generic_markdown_code_block(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should handle JSON wrapped in generic code blocks."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''```
+[
+    {
+        "id": "tech",
+        "name": "Technology",
+        "description": "Tech topics",
+        "keywords": ["tech"]
+    }
+]
+```'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert len(themes) == 1
+        assert themes[0].id == "tech"
+
+    def test_parse_themes_from_response_returns_empty_list_for_invalid_json(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should return empty list for invalid JSON."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = "This is not valid JSON at all."
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes == []
+
+    def test_parse_themes_from_response_returns_empty_list_for_empty_response(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should return empty list for empty response."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = ""
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes == []
+
+    def test_parse_themes_from_response_returns_empty_list_for_empty_json_array(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should return empty list for empty JSON array."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = "[]"
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes == []
+
+    def test_parse_themes_from_response_skips_themes_missing_required_fields(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should skip themes missing required fields."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "valid-theme",
+                "name": "Valid Theme",
+                "description": "This is valid",
+                "keywords": ["valid"]
+            },
+            {
+                "name": "Missing ID",
+                "description": "This is missing id",
+                "keywords": ["invalid"]
+            },
+            {
+                "id": "missing-name",
+                "description": "This is missing name",
+                "keywords": ["invalid"]
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert len(themes) == 1
+        assert themes[0].id == "valid-theme"
+
+    def test_parse_themes_from_response_handles_extra_whitespace(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should handle extra whitespace in response."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''
+
+            [
+                {
+                    "id": "test-theme",
+                    "name": "Test Theme",
+                    "description": "A test",
+                    "keywords": ["test"]
+                }
+            ]
+
+        '''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert len(themes) == 1
+        assert themes[0].id == "test-theme"
+
+    def test_parse_themes_from_response_handles_empty_keywords_list(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should handle themes with empty keywords list."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "no-keywords",
+                "name": "No Keywords Theme",
+                "description": "A theme without keywords",
+                "keywords": []
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert len(themes) == 1
+        assert themes[0].keywords == []
+
+    def test_parse_themes_from_response_handles_llm_preamble_text(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should handle LLM response with preamble text before JSON."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''Based on the content provided, here are the themes I've identified:
+
+```json
+[
+    {
+        "id": "personal-growth",
+        "name": "Personal Growth",
+        "description": "Self-improvement topics",
+        "keywords": ["growth"]
+    }
+]
+```
+
+These themes represent the major categories in your knowledge base.'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert len(themes) == 1
+        assert themes[0].id == "personal-growth"
+
+    def test_parse_themes_from_response_created_at_equals_updated_at(self, mock_ollama_client, temp_dir):
+        """_parse_themes_from_response() should set created_at and updated_at to the same value for new themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        response = '''[
+            {
+                "id": "test",
+                "name": "Test",
+                "description": "Test",
+                "keywords": []
+            }
+        ]'''
+
+        themes = generator._parse_themes_from_response(response)
+
+        assert themes[0].created_at == themes[0].updated_at
