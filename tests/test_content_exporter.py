@@ -178,3 +178,182 @@ class TestInferContentType:
         result = exporter._infer_content_type("")
 
         assert result == ContentType.WEB_CONTENT
+
+
+class TestGenerateTitle:
+    """Tests for _generate_title() method."""
+
+    def test_generate_title_uses_name_from_metadata(self, mock_knowledge_base):
+        """When metadata has 'name' field, use it as title."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"name": "My Custom Title", "type": "value"}
+        content = "This is the content that should not be used."
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "My Custom Title"
+
+    def test_generate_title_uses_content_when_no_name(self, mock_knowledge_base):
+        """When metadata lacks 'name', generate title from content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "value"}
+        content = "This is a short piece of content."
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "This is a short piece of content."
+
+    def test_generate_title_truncates_long_content_at_50_chars(self, mock_knowledge_base):
+        """When generating from content, truncate at 50 characters."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {}
+        content = "This is a much longer piece of content that definitely exceeds fifty characters in length and should be truncated."
+
+        result = exporter._generate_title(metadata, content)
+
+        assert len(result) <= 53  # 50 chars + "..."
+        assert result.endswith("...")
+        assert result == "This is a much longer piece of content that defin..."
+
+    def test_generate_title_no_ellipsis_for_short_content(self, mock_knowledge_base):
+        """Content under 50 chars should not have ellipsis."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {}
+        content = "Short content"
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Short content"
+        assert not result.endswith("...")
+
+    def test_generate_title_exactly_50_chars_no_ellipsis(self, mock_knowledge_base):
+        """Content exactly 50 chars should not have ellipsis."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {}
+        # Exactly 50 characters
+        content = "12345678901234567890123456789012345678901234567890"
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == content
+        assert len(result) == 50
+        assert not result.endswith("...")
+
+    def test_generate_title_handles_empty_name(self, mock_knowledge_base):
+        """Empty 'name' field should fall back to content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"name": "", "type": "value"}
+        content = "Content used as fallback"
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Content used as fallback"
+
+    def test_generate_title_handles_none_name(self, mock_knowledge_base):
+        """None 'name' field should fall back to content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"name": None, "type": "value"}
+        content = "Content used as fallback"
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Content used as fallback"
+
+    def test_generate_title_handles_empty_content(self, mock_knowledge_base):
+        """Empty content should return 'Untitled' placeholder."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {}
+        content = ""
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Untitled"
+
+    def test_generate_title_handles_none_content(self, mock_knowledge_base):
+        """None content should return 'Untitled' placeholder."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {}
+        content = None
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Untitled"
+
+    def test_generate_title_handles_whitespace_only_content(self, mock_knowledge_base):
+        """Whitespace-only content should return 'Untitled' placeholder."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {}
+        content = "   \n\t  "
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Untitled"
+
+    def test_generate_title_strips_leading_whitespace(self, mock_knowledge_base):
+        """Content with leading whitespace should be stripped."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {}
+        content = "   Leading whitespace content"
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Leading whitespace content"
+
+    def test_generate_title_handles_none_metadata(self, mock_knowledge_base):
+        """None metadata should fall back to content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = None
+        content = "Content used as title"
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Content used as title"
+
+    def test_generate_title_prefers_name_over_content(self, mock_knowledge_base):
+        """Name in metadata should always be preferred over content."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"name": "Preferred Name"}
+        content = "This is the content"
+
+        result = exporter._generate_title(metadata, content)
+
+        assert result == "Preferred Name"
+
+    def test_generate_title_with_newlines_in_content(self, mock_knowledge_base):
+        """Newlines in content should be handled (use first line or strip)."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {}
+        content = "First line of content\nSecond line\nThird line"
+
+        result = exporter._generate_title(metadata, content)
+
+        # Should take first 50 chars, which includes the first line
+        assert "First line of content" in result
