@@ -7,6 +7,8 @@ This module tests edge cases in the library build process including:
 - Items without source_url (Task 179)
 - Items without highlights (Task 181)
 - Small knowledge base with minimum themes (Task 183)
+- Full build process integration (Task 185)
+- Valid HTML output validation (Task 186)
 
 These tests ensure the library handles edge conditions gracefully and
 displays appropriate messages to users.
@@ -2540,3 +2542,445 @@ class TestFullBuildProcessIntegration:
         beta_content = (site_dir / "theme" / "theme-beta" / "index.html").read_text()
         assert "Theme B Item" in beta_content
         assert "Theme A Item" not in beta_content
+
+
+class TestHtmlOutputValidation:
+    """Integration tests for valid HTML output (Task 186).
+
+    These tests verify that all generated HTML pages:
+    - Have valid HTML5 structure (doctype, html, head, body)
+    - Contain required meta tags (charset, viewport)
+    - Have properly nested elements
+    - Include navigation and footer elements
+    - Have working internal links
+    """
+
+    def _validate_html_structure(self, html_content: str, page_name: str) -> list:
+        """Validate HTML structure and return list of issues found."""
+        from bs4 import BeautifulSoup
+
+        issues = []
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Check doctype
+        if not html_content.strip().lower().startswith("<!doctype html>"):
+            issues.append(f"{page_name}: Missing or incorrect DOCTYPE")
+
+        # Check html element exists with lang attribute
+        html_tag = soup.find("html")
+        if not html_tag:
+            issues.append(f"{page_name}: Missing <html> element")
+        elif not html_tag.get("lang"):
+            issues.append(f"{page_name}: <html> element missing lang attribute")
+
+        # Check head element with required children
+        head = soup.find("head")
+        if not head:
+            issues.append(f"{page_name}: Missing <head> element")
+        else:
+            # Check charset meta
+            charset_meta = head.find("meta", charset=True)
+            if not charset_meta:
+                issues.append(f"{page_name}: Missing charset meta tag")
+
+            # Check viewport meta
+            viewport_meta = head.find("meta", attrs={"name": "viewport"})
+            if not viewport_meta:
+                issues.append(f"{page_name}: Missing viewport meta tag")
+
+            # Check title
+            title = head.find("title")
+            if not title or not title.string:
+                issues.append(f"{page_name}: Missing or empty <title> tag")
+
+        # Check body element exists
+        body = soup.find("body")
+        if not body:
+            issues.append(f"{page_name}: Missing <body> element")
+        else:
+            # Check header element
+            header = body.find("header")
+            if not header:
+                issues.append(f"{page_name}: Missing <header> element")
+
+            # Check main element
+            main = body.find("main")
+            if not main:
+                issues.append(f"{page_name}: Missing <main> element")
+
+            # Check footer element
+            footer = body.find("footer")
+            if not footer:
+                issues.append(f"{page_name}: Missing <footer> element")
+
+            # Check navigation exists
+            nav = body.find("nav")
+            if not nav:
+                issues.append(f"{page_name}: Missing <nav> element")
+
+        return issues
+
+    def _build_test_site(self, temp_dir):
+        """Helper to build a test site with sample content."""
+        from src.library.builder import LibraryBuilder
+
+        mock_knowledge_base = MagicMock()
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "book-1",
+                    "content": "A comprehensive book about systems thinking, covering feedback loops and emergent behavior.",
+                    "metadata": {
+                        "type": "book",
+                        "name": "Thinking in Systems",
+                        "source": "https://example.com/book1",
+                    },
+                },
+                {
+                    "id": "value-1",
+                    "content": "Continuous learning is essential for personal and professional growth.",
+                    "metadata": {
+                        "type": "value",
+                        "name": "Continuous Learning",
+                    },
+                },
+                {
+                    "id": "framework-1",
+                    "content": "Step 1: Define the problem. Step 2: Gather information. Step 3: Generate solutions.",
+                    "metadata": {
+                        "type": "framework",
+                        "name": "Problem Solving Framework",
+                        "source": "https://example.com/framework",
+                    },
+                },
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.side_effect = [
+            """[
+                {"id": "systems-thinking", "name": "Systems Thinking", "description": "Understanding complex systems and feedback loops", "keywords": ["systems", "complexity"]},
+                {"id": "personal-growth", "name": "Personal Growth", "description": "Self-improvement and learning strategies", "keywords": ["growth", "learning"]},
+                {"id": "problem-solving", "name": "Problem Solving", "description": "Frameworks for tackling challenges", "keywords": ["problems", "solutions"]}
+            ]""",
+            """[
+                {"item_id": "book-1", "theme_id": "systems-thinking", "confidence": 0.9},
+                {"item_id": "value-1", "theme_id": "personal-growth", "confidence": 0.85},
+                {"item_id": "framework-1", "theme_id": "problem-solving", "confidence": 0.88}
+            ]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        builder.build()
+        return site_dir
+
+    def test_home_page_has_valid_html_structure(self, temp_dir):
+        """Home page (index.html) should have valid HTML5 structure."""
+        site_dir = self._build_test_site(temp_dir)
+
+        html_content = (site_dir / "index.html").read_text()
+        issues = self._validate_html_structure(html_content, "index.html")
+
+        assert not issues, f"HTML validation issues found: {issues}"
+
+    def test_all_content_page_has_valid_html_structure(self, temp_dir):
+        """All content page should have valid HTML5 structure."""
+        site_dir = self._build_test_site(temp_dir)
+
+        html_content = (site_dir / "all" / "index.html").read_text()
+        issues = self._validate_html_structure(html_content, "all/index.html")
+
+        assert not issues, f"HTML validation issues found: {issues}"
+
+    def test_search_page_has_valid_html_structure(self, temp_dir):
+        """Search page should have valid HTML5 structure."""
+        site_dir = self._build_test_site(temp_dir)
+
+        html_content = (site_dir / "search" / "index.html").read_text()
+        issues = self._validate_html_structure(html_content, "search/index.html")
+
+        assert not issues, f"HTML validation issues found: {issues}"
+
+    def test_theme_pages_have_valid_html_structure(self, temp_dir):
+        """All theme pages should have valid HTML5 structure."""
+        site_dir = self._build_test_site(temp_dir)
+
+        theme_dir = site_dir / "theme"
+        all_issues = []
+
+        for theme_path in theme_dir.iterdir():
+            if theme_path.is_dir():
+                html_file = theme_path / "index.html"
+                if html_file.exists():
+                    html_content = html_file.read_text()
+                    page_name = f"theme/{theme_path.name}/index.html"
+                    issues = self._validate_html_structure(html_content, page_name)
+                    all_issues.extend(issues)
+
+        assert not all_issues, f"HTML validation issues found: {all_issues}"
+
+    def test_item_pages_have_valid_html_structure(self, temp_dir):
+        """All item detail pages should have valid HTML5 structure."""
+        site_dir = self._build_test_site(temp_dir)
+
+        item_dir = site_dir / "item"
+        all_issues = []
+
+        for item_path in item_dir.iterdir():
+            if item_path.is_dir():
+                html_file = item_path / "index.html"
+                if html_file.exists():
+                    html_content = html_file.read_text()
+                    page_name = f"item/{item_path.name}/index.html"
+                    issues = self._validate_html_structure(html_content, page_name)
+                    all_issues.extend(issues)
+
+        assert not all_issues, f"HTML validation issues found: {all_issues}"
+
+    def test_all_pages_have_css_link(self, temp_dir):
+        """All pages should link to the main stylesheet."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        pages_to_check = [
+            site_dir / "index.html",
+            site_dir / "all" / "index.html",
+            site_dir / "search" / "index.html",
+        ]
+
+        # Add theme pages
+        for theme_path in (site_dir / "theme").iterdir():
+            if theme_path.is_dir():
+                pages_to_check.append(theme_path / "index.html")
+
+        # Add item pages
+        for item_path in (site_dir / "item").iterdir():
+            if item_path.is_dir():
+                pages_to_check.append(item_path / "index.html")
+
+        for page_path in pages_to_check:
+            if page_path.exists():
+                html_content = page_path.read_text()
+                soup = BeautifulSoup(html_content, "html.parser")
+
+                css_link = soup.find("link", rel="stylesheet")
+                assert css_link is not None, f"{page_path} missing stylesheet link"
+                assert "/assets/css/styles.css" in css_link.get("href", ""), \
+                    f"{page_path} has incorrect stylesheet href"
+
+    def test_all_pages_have_search_js(self, temp_dir):
+        """All pages should include the search JavaScript."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        pages_to_check = [
+            site_dir / "index.html",
+            site_dir / "all" / "index.html",
+            site_dir / "search" / "index.html",
+        ]
+
+        for page_path in pages_to_check:
+            if page_path.exists():
+                html_content = page_path.read_text()
+                soup = BeautifulSoup(html_content, "html.parser")
+
+                scripts = soup.find_all("script")
+                script_srcs = [s.get("src", "") for s in scripts]
+                has_search_js = any("/assets/js/search.js" in src for src in script_srcs)
+
+                assert has_search_js, f"{page_path} missing search.js script"
+
+    def test_navigation_links_are_valid(self, temp_dir):
+        """Navigation links should point to existing pages."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        html_content = (site_dir / "index.html").read_text()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        nav = soup.find("nav", class_="nav")
+        if nav:
+            nav_links = nav.find_all("a")
+            for link in nav_links:
+                href = link.get("href", "")
+                if href and not href.startswith(("http", "#")):
+                    # Convert href to file path
+                    if href == "/":
+                        target = site_dir / "index.html"
+                    else:
+                        target = site_dir / href.strip("/") / "index.html"
+
+                    assert target.exists(), f"Navigation link {href} points to non-existent page"
+
+    def test_item_pages_have_breadcrumb_navigation(self, temp_dir):
+        """Item detail pages should have breadcrumb navigation."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        item_dir = site_dir / "item"
+
+        for item_path in item_dir.iterdir():
+            if item_path.is_dir():
+                html_file = item_path / "index.html"
+                if html_file.exists():
+                    html_content = html_file.read_text()
+                    soup = BeautifulSoup(html_content, "html.parser")
+
+                    breadcrumbs = soup.find("nav", class_="breadcrumbs")
+                    assert breadcrumbs is not None, \
+                        f"item/{item_path.name}/index.html missing breadcrumb navigation"
+
+                    # Should have Home link
+                    home_link = breadcrumbs.find("a", href="/")
+                    assert home_link is not None, \
+                        f"item/{item_path.name}/index.html breadcrumbs missing Home link"
+
+    def test_theme_pages_have_breadcrumb_navigation(self, temp_dir):
+        """Theme pages should have breadcrumb navigation."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        theme_dir = site_dir / "theme"
+
+        for theme_path in theme_dir.iterdir():
+            if theme_path.is_dir():
+                html_file = theme_path / "index.html"
+                if html_file.exists():
+                    html_content = html_file.read_text()
+                    soup = BeautifulSoup(html_content, "html.parser")
+
+                    breadcrumbs = soup.find("nav", class_="breadcrumbs")
+                    assert breadcrumbs is not None, \
+                        f"theme/{theme_path.name}/index.html missing breadcrumb navigation"
+
+    def test_item_page_content_sections(self, temp_dir):
+        """Item pages should have expected content sections."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        # Check a specific item page
+        book_page = site_dir / "item" / "book-1" / "index.html"
+        html_content = book_page.read_text()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Should have item header
+        item_header = soup.find("header", class_="item-header")
+        assert item_header is not None, "Item page missing item-header section"
+
+        # Should have title in header
+        title = soup.find("h1", class_="item-title")
+        assert title is not None, "Item page missing item title"
+        assert "Thinking in Systems" in title.text
+
+        # Should have metadata section
+        metadata = soup.find("section", class_="metadata-section")
+        assert metadata is not None, "Item page missing metadata section"
+
+    def test_home_page_displays_theme_cards(self, temp_dir):
+        """Home page should display theme cards for navigation."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        html_content = (site_dir / "index.html").read_text()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Should have theme cards or links
+        theme_links = soup.find_all("a", href=lambda x: x and "/theme/" in x)
+        assert len(theme_links) > 0, "Home page should have links to theme pages"
+
+    def test_all_content_page_displays_item_cards(self, temp_dir):
+        """All content page should display cards for all items."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        html_content = (site_dir / "all" / "index.html").read_text()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Should have item cards or links
+        item_links = soup.find_all("a", href=lambda x: x and "/item/" in x)
+        assert len(item_links) >= 3, "All content page should have links to all item pages"
+
+    def test_search_page_has_search_input(self, temp_dir):
+        """Search page should have a search input element."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        html_content = (site_dir / "search" / "index.html").read_text()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Should have search input
+        search_input = soup.find("input", attrs={"type": "search"})
+        if not search_input:
+            search_input = soup.find("input", id=lambda x: x and "search" in x.lower())
+
+        assert search_input is not None, "Search page should have a search input"
+
+    def test_html_does_not_contain_template_syntax(self, temp_dir):
+        """Generated HTML should not contain unprocessed Jinja2 template syntax."""
+        site_dir = self._build_test_site(temp_dir)
+
+        pages_to_check = [
+            site_dir / "index.html",
+            site_dir / "all" / "index.html",
+            site_dir / "search" / "index.html",
+        ]
+
+        # Add theme and item pages
+        for theme_path in (site_dir / "theme").iterdir():
+            if theme_path.is_dir():
+                pages_to_check.append(theme_path / "index.html")
+
+        for item_path in (site_dir / "item").iterdir():
+            if item_path.is_dir():
+                pages_to_check.append(item_path / "index.html")
+
+        template_markers = ["{{", "}}", "{%", "%}", "{#", "#}"]
+
+        for page_path in pages_to_check:
+            if page_path.exists():
+                content = page_path.read_text()
+                for marker in template_markers:
+                    assert marker not in content, \
+                        f"{page_path} contains unprocessed template syntax: {marker}"
+
+    def test_all_internal_links_are_valid(self, temp_dir):
+        """All internal links in generated pages should point to existing files."""
+        site_dir = self._build_test_site(temp_dir)
+        from bs4 import BeautifulSoup
+
+        pages_to_check = [
+            site_dir / "index.html",
+            site_dir / "all" / "index.html",
+        ]
+
+        broken_links = []
+
+        for page_path in pages_to_check:
+            if page_path.exists():
+                html_content = page_path.read_text()
+                soup = BeautifulSoup(html_content, "html.parser")
+
+                for link in soup.find_all("a"):
+                    href = link.get("href", "")
+                    # Only check internal links
+                    if href and not href.startswith(("http", "https", "#", "mailto:")):
+                        if href == "/":
+                            target = site_dir / "index.html"
+                        elif href.endswith("/"):
+                            target = site_dir / href.strip("/") / "index.html"
+                        else:
+                            target = site_dir / href.lstrip("/")
+
+                        if not target.exists():
+                            broken_links.append(f"{page_path}: link to {href}")
+
+        assert not broken_links, f"Found broken internal links: {broken_links}"
