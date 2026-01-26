@@ -111,7 +111,7 @@ data/library-site/         # Generated site
 - [x] 15. Write tests for Theme.to_dict() and Theme.from_dict() serialization
 - [x] 16. Implement Theme serialization methods
 - [x] 17. Write tests for ThemeAssignment dataclass (item_id, theme_id, confidence, assigned_at)
-- [ ] 18. Implement ThemeAssignment dataclass with serialization
+- [x] 18. Implement ThemeAssignment dataclass with serialization
 
 ### Phase 3: Content Export (15 tasks)
 
