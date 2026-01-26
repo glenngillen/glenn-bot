@@ -716,6 +716,21 @@ code {
   gap: var(--spacing-4);
 }
 
+/* Type Group Headers (shown when sorted by type) */
+.type-group-header {
+  grid-column: 1 / -1;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  margin: var(--spacing-6) 0 var(--spacing-4) 0;
+  padding-bottom: var(--spacing-2);
+  border-bottom: 2px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.type-group-header:first-child {
+  margin-top: 0;
+}
+
 .results-count {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);

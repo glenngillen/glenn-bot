@@ -213,8 +213,8 @@ data/library-site/         # Generated site
 - [x] 99. Implement highlight/blockquote styling (border-left 4px accent)
 - [x] 100. Create `src/library/assets/js/` directory
 - [x] 101. Implement search.js with Fuse.js CDN (lazy-load, 300ms debounce)
-- [ ] 102. Implement sort functionality (Recent, A-Z, By Type)
-- [ ] 103. Implement pagination/load-more (50 items per page)
+- [x] 102. Implement sort functionality (Recent, A-Z, By Type)
+- [x] 103. Implement pagination/load-more (50 items per page)
 - [ ] 104. Create `src/library/assets/images/placeholders/` directory
 - [ ] 105. Create 10 SVG placeholder icons (book, article, framework, value, preference, memory, insight, goal, skill, web_content)
 
