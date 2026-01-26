@@ -2461,3 +2461,444 @@ class TestResolveAllCovers:
 
             # Should save cache once at the end, not 5 times
             assert mock_save_cache.call_count == 1
+
+
+class TestApiErrorHandling:
+    """Tests for API error handling with exponential backoff."""
+
+    def test_fetch_cover_by_isbn_retries_on_429_rate_limit(self, temp_dir):
+        """_fetch_cover_by_isbn() should retry with backoff on 429 rate limit response."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            # First call returns 429 (rate limited), second call succeeds
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.headers = {"content-type": "image/jpeg"}
+
+            mock_head.side_effect = [mock_response_429, mock_response_success]
+
+            result = resolver._fetch_cover_by_isbn("9781234567890")
+
+            # Should have retried after backoff
+            assert mock_head.call_count == 2
+            # Should have slept between retries
+            assert mock_sleep.call_count >= 1
+            # Should eventually return the URL
+            assert result is not None
+            assert "9781234567890" in result
+
+    def test_fetch_cover_by_isbn_uses_exponential_backoff(self, temp_dir):
+        """_fetch_cover_by_isbn() should use exponential backoff between retries."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            # Multiple 429s then success
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.headers = {"content-type": "image/jpeg"}
+
+            mock_head.side_effect = [mock_response_429, mock_response_429, mock_response_success]
+
+            result = resolver._fetch_cover_by_isbn("9781234567890")
+
+            # Should have called sleep multiple times with increasing delays
+            assert mock_sleep.call_count >= 2
+            sleep_calls = [call[0][0] for call in mock_sleep.call_args_list]
+            # Each delay should be >= the previous (exponential)
+            for i in range(1, len(sleep_calls)):
+                assert sleep_calls[i] >= sleep_calls[i - 1]
+
+    def test_fetch_cover_by_isbn_gives_up_after_max_retries(self, temp_dir):
+        """_fetch_cover_by_isbn() should return None after max retries on persistent 429."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            # Always return 429
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+            mock_head.return_value = mock_response_429
+
+            result = resolver._fetch_cover_by_isbn("9781234567890")
+
+            # Should eventually give up and return None
+            assert result is None
+            # Should have made multiple attempts (but not infinite)
+            assert mock_head.call_count <= 5  # Max retries should be capped
+
+    def test_fetch_cover_by_isbn_retries_on_503_service_unavailable(self, temp_dir):
+        """_fetch_cover_by_isbn() should retry on 503 service unavailable."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            # First call returns 503, second succeeds
+            mock_response_503 = Mock()
+            mock_response_503.status_code = 503
+            mock_response_503.headers = {}
+
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.headers = {"content-type": "image/jpeg"}
+
+            mock_head.side_effect = [mock_response_503, mock_response_success]
+
+            result = resolver._fetch_cover_by_isbn("9781234567890")
+
+            # Should have retried
+            assert mock_head.call_count == 2
+            assert result is not None
+
+    def test_fetch_cover_by_title_retries_on_rate_limit(self, temp_dir):
+        """_fetch_cover_by_title() should retry with backoff on rate limit."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            # First call returns 429, second succeeds
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.headers = {"content-type": "image/jpeg"}
+
+            mock_head.side_effect = [mock_response_429, mock_response_success]
+
+            result = resolver._fetch_cover_by_title("Thinking in Systems")
+
+            assert mock_head.call_count == 2
+            assert mock_sleep.call_count >= 1
+            assert result is not None
+
+    def test_fetch_cover_by_title_gives_up_after_max_retries(self, temp_dir):
+        """_fetch_cover_by_title() should return None after max retries."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            # Always return 429
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+            mock_head.return_value = mock_response_429
+
+            result = resolver._fetch_cover_by_title("Thinking in Systems")
+
+            assert result is None
+            assert mock_head.call_count <= 5
+
+    def test_fetch_cover_from_google_books_retries_on_rate_limit(self, temp_dir):
+        """_fetch_cover_from_google_books() should retry with backoff on rate limit."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get, \
+             patch("time.sleep") as mock_sleep:
+            # First call returns 429, second succeeds
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.json.return_value = {
+                "items": [{
+                    "volumeInfo": {
+                        "imageLinks": {"thumbnail": "https://books.google.com/thumb.jpg"}
+                    }
+                }]
+            }
+
+            mock_get.side_effect = [mock_response_429, mock_response_success]
+
+            result = resolver._fetch_cover_from_google_books("Test Book")
+
+            assert mock_get.call_count == 2
+            assert mock_sleep.call_count >= 1
+            assert result == "https://books.google.com/thumb.jpg"
+
+    def test_fetch_cover_from_google_books_gives_up_after_max_retries(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None after max retries."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get, \
+             patch("time.sleep") as mock_sleep:
+            # Always return 429
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+            mock_get.return_value = mock_response_429
+
+            result = resolver._fetch_cover_from_google_books("Test Book")
+
+            assert result is None
+            assert mock_get.call_count <= 5
+
+    def test_resolve_cover_gracefully_handles_all_apis_rate_limited(self, temp_dir):
+        """resolve_cover() should return placeholder when all APIs are rate limited."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        item = LibraryItem(
+            id="rate_limited_book",
+            content_type=ContentType.BOOK,
+            title="Rate Limited Book",
+            summary="A book when APIs are rate limited",
+            full_content="Full content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "9781234567890"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("src.library.cover_resolver.requests.get") as mock_get, \
+             patch("time.sleep") as mock_sleep:
+            # All APIs return 429
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+            mock_head.return_value = mock_response_429
+            mock_get.return_value = mock_response_429
+
+            result = resolver.resolve_cover(item)
+
+            # Should fall back to placeholder gracefully
+            assert result is not None
+            assert "book" in result.lower()
+            assert result.endswith(".svg")
+
+    def test_resolve_all_covers_continues_when_apis_rate_limited(self, temp_dir):
+        """resolve_all_covers() should continue processing when APIs are rate limited."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        items = [
+            LibraryItem(
+                id="book_1",
+                content_type=ContentType.BOOK,
+                title="Book 1",
+                summary="First book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={"isbn": "1111111111"},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="book_2",
+                content_type=ContentType.BOOK,
+                title="Book 2",
+                summary="Second book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={"isbn": "2222222222"},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            ),
+            LibraryItem(
+                id="framework_1",
+                content_type=ContentType.FRAMEWORK,
+                title="Framework 1",
+                summary="A framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+        ]
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("src.library.cover_resolver.requests.get") as mock_get, \
+             patch("time.sleep") as mock_sleep:
+            # All APIs return 429
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+            mock_head.return_value = mock_response_429
+            mock_get.return_value = mock_response_429
+
+            result = resolver.resolve_all_covers(items)
+
+            # All items should have covers (placeholders for rate-limited books)
+            assert len(result) == 3
+            assert all(item.cover_image_url is not None for item in result)
+            # Books should fall back to book placeholder
+            assert "book" in result[0].cover_image_url.lower()
+            assert "book" in result[1].cover_image_url.lower()
+            # Framework should have its own placeholder
+            assert "framework" in result[2].cover_image_url.lower()
+
+    def test_fetch_cover_by_isbn_does_not_retry_on_404(self, temp_dir):
+        """_fetch_cover_by_isbn() should not retry on 404 (not found is permanent)."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            mock_response_404 = Mock()
+            mock_response_404.status_code = 404
+            mock_head.return_value = mock_response_404
+
+            result = resolver._fetch_cover_by_isbn("0000000000")
+
+            # Should not retry on 404 - just return None immediately
+            assert mock_head.call_count == 1
+            assert mock_sleep.call_count == 0
+            assert result is None
+
+    def test_fetch_cover_by_isbn_retries_on_connection_error(self, temp_dir):
+        """_fetch_cover_by_isbn() should retry on connection errors."""
+        from src.library.cover_resolver import CoverResolver
+        import requests
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.headers = {"content-type": "image/jpeg"}
+
+            # First call raises connection error, second succeeds
+            mock_head.side_effect = [
+                requests.ConnectionError("Connection refused"),
+                mock_response_success
+            ]
+
+            result = resolver._fetch_cover_by_isbn("9781234567890")
+
+            # Should have retried after the connection error
+            assert mock_head.call_count == 2
+            assert mock_sleep.call_count >= 1
+            assert result is not None
+
+    def test_exponential_backoff_caps_at_maximum_delay(self, temp_dir):
+        """Exponential backoff should cap at a reasonable maximum delay."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            # Always return 429 to force maximum retries
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {}
+            mock_head.return_value = mock_response_429
+
+            resolver._fetch_cover_by_isbn("9781234567890")
+
+            # Check that sleep delays are capped (no delay > 30 seconds)
+            for call in mock_sleep.call_args_list:
+                delay = call[0][0]
+                assert delay <= 30, f"Backoff delay {delay} exceeds maximum of 30 seconds"
+
+    def test_retries_respect_retry_after_header(self, temp_dir):
+        """_fetch_cover_by_isbn() should respect Retry-After header if present."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("time.sleep") as mock_sleep:
+            # First call returns 429 with Retry-After header
+            mock_response_429 = Mock()
+            mock_response_429.status_code = 429
+            mock_response_429.headers = {"Retry-After": "5"}
+
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.headers = {"content-type": "image/jpeg"}
+
+            mock_head.side_effect = [mock_response_429, mock_response_success]
+
+            result = resolver._fetch_cover_by_isbn("9781234567890")
+
+            # Should have waited at least 5 seconds (or more due to backoff)
+            assert mock_sleep.call_count >= 1
+            first_sleep = mock_sleep.call_args_list[0][0][0]
+            assert first_sleep >= 5, f"Should wait at least 5 seconds per Retry-After, got {first_sleep}"
