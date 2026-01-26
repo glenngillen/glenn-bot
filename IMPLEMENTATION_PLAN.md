@@ -312,7 +312,7 @@ data/library-site/         # Generated site
 - [x] 180. Implement conditional source link in item.html
 - [x] 181. Write tests for items without highlights
 - [x] 182. Implement conditional highlights section
-- [ ] 183. Write tests for small knowledge base (minimum 3 themes)
+- [x] 183. Write tests for small knowledge base (minimum 3 themes)
 - [ ] 184. Implement minimum theme count logic
 - [ ] 185. Write integration test for full build process
 - [ ] 186. Write integration test for valid HTML output
