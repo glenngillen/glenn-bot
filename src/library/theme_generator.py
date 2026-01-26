@@ -101,3 +101,23 @@ class ThemeGenerator:
         assignments_data = [assignment.to_dict() for assignment in self.assignments]
         with open(self.assignments_file, "w") as f:
             json.dump(assignments_data, f, indent=2)
+
+    def load_assignments(self) -> list[ThemeAssignment]:
+        """Load assignments from assignments.json file in the data directory.
+
+        Reads the assignments.json file and parses it into ThemeAssignment objects.
+        Replaces any existing assignments in self.assignments with the loaded data.
+
+        Returns:
+            List of ThemeAssignment objects loaded from the file. Returns empty list
+            if the file doesn't exist or is empty.
+        """
+        if not self.assignments_file.exists():
+            self.assignments = []
+            return self.assignments
+
+        with open(self.assignments_file) as f:
+            assignments_data = json.load(f)
+
+        self.assignments = [ThemeAssignment.from_dict(data) for data in assignments_data]
+        return self.assignments
