@@ -276,3 +276,308 @@ class TestLibraryItem:
         from src.library.models import LibraryItem
 
         assert is_dataclass(LibraryItem)
+
+
+class TestLibraryItemSerialization:
+    """Tests for LibraryItem serialization methods (to_dict and from_dict)."""
+
+    def test_to_dict_returns_dictionary(self):
+        """to_dict should return a dictionary."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url="https://example.com",
+            cover_image_url="https://example.com/cover.jpg",
+            metadata={"author": "Test Author"},
+            themes=["theme-1"],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=["Highlight 1"],
+        )
+
+        result = item.to_dict()
+        assert isinstance(result, dict)
+
+    def test_to_dict_serializes_all_fields(self):
+        """to_dict should include all LibraryItem fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url="https://example.com",
+            cover_image_url="https://example.com/cover.jpg",
+            metadata={"author": "Test Author"},
+            themes=["theme-1", "theme-2"],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=["Highlight 1", "Highlight 2"],
+        )
+
+        result = item.to_dict()
+
+        assert result["id"] == "test-123"
+        assert result["title"] == "Test Book"
+        assert result["summary"] == "A test summary"
+        assert result["full_content"] == "Full content here."
+        assert result["source_url"] == "https://example.com"
+        assert result["cover_image_url"] == "https://example.com/cover.jpg"
+        assert result["metadata"] == {"author": "Test Author"}
+        assert result["themes"] == ["theme-1", "theme-2"]
+        assert result["highlights"] == ["Highlight 1", "Highlight 2"]
+
+    def test_to_dict_serializes_content_type_as_string(self):
+        """to_dict should convert ContentType enum to string value."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.FRAMEWORK,
+            title="Test Framework",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        result = item.to_dict()
+
+        assert result["content_type"] == "framework"
+        assert isinstance(result["content_type"], str)
+
+    def test_to_dict_serializes_datetime_as_iso_string(self):
+        """to_dict should convert datetime to ISO format string."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.MEMORY,
+            title="Test Memory",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        result = item.to_dict()
+
+        assert result["created_at"] == "2024-01-15T10:30:00"
+        assert isinstance(result["created_at"], str)
+
+    def test_to_dict_preserves_none_values(self):
+        """to_dict should preserve None values for optional fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.INSIGHT,
+            title="Test Insight",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        result = item.to_dict()
+
+        assert result["source_url"] is None
+        assert result["cover_image_url"] is None
+
+    def test_from_dict_returns_library_item(self):
+        """from_dict should return a LibraryItem instance."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "book",
+            "title": "Test Book",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": "https://example.com",
+            "cover_image_url": "https://example.com/cover.jpg",
+            "metadata": {"author": "Test Author"},
+            "themes": ["theme-1"],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": ["Highlight 1"],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert isinstance(result, LibraryItem)
+
+    def test_from_dict_deserializes_all_fields(self):
+        """from_dict should correctly set all LibraryItem fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "book",
+            "title": "Test Book",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": "https://example.com",
+            "cover_image_url": "https://example.com/cover.jpg",
+            "metadata": {"author": "Test Author"},
+            "themes": ["theme-1", "theme-2"],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": ["Highlight 1", "Highlight 2"],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert result.id == "test-123"
+        assert result.title == "Test Book"
+        assert result.summary == "A test summary"
+        assert result.full_content == "Full content here."
+        assert result.source_url == "https://example.com"
+        assert result.cover_image_url == "https://example.com/cover.jpg"
+        assert result.metadata == {"author": "Test Author"}
+        assert result.themes == ["theme-1", "theme-2"]
+        assert result.highlights == ["Highlight 1", "Highlight 2"]
+
+    def test_from_dict_deserializes_content_type_from_string(self):
+        """from_dict should convert string to ContentType enum."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "framework",
+            "title": "Test Framework",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": None,
+            "cover_image_url": None,
+            "metadata": {},
+            "themes": [],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": [],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert result.content_type == ContentType.FRAMEWORK
+        assert isinstance(result.content_type, ContentType)
+
+    def test_from_dict_deserializes_datetime_from_iso_string(self):
+        """from_dict should convert ISO string to datetime."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "memory",
+            "title": "Test Memory",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": None,
+            "cover_image_url": None,
+            "metadata": {},
+            "themes": [],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": [],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert result.created_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert isinstance(result.created_at, datetime)
+
+    def test_from_dict_handles_none_optional_fields(self):
+        """from_dict should correctly handle None values for optional fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "insight",
+            "title": "Test Insight",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": None,
+            "cover_image_url": None,
+            "metadata": {},
+            "themes": [],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": [],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert result.source_url is None
+        assert result.cover_image_url is None
+
+    def test_roundtrip_to_dict_from_dict(self):
+        """Converting to_dict then from_dict should produce equivalent object."""
+        from src.library.models import LibraryItem, ContentType
+
+        original = LibraryItem(
+            id="test-123",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url="https://example.com",
+            cover_image_url="https://example.com/cover.jpg",
+            metadata={"author": "Test Author", "year": 2024},
+            themes=["theme-1", "theme-2"],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=["Highlight 1", "Highlight 2"],
+        )
+
+        data = original.to_dict()
+        reconstructed = LibraryItem.from_dict(data)
+
+        assert reconstructed.id == original.id
+        assert reconstructed.content_type == original.content_type
+        assert reconstructed.title == original.title
+        assert reconstructed.summary == original.summary
+        assert reconstructed.full_content == original.full_content
+        assert reconstructed.source_url == original.source_url
+        assert reconstructed.cover_image_url == original.cover_image_url
+        assert reconstructed.metadata == original.metadata
+        assert reconstructed.themes == original.themes
+        assert reconstructed.created_at == original.created_at
+        assert reconstructed.highlights == original.highlights
+
+    def test_from_dict_handles_all_content_types(self):
+        """from_dict should handle all ContentType values."""
+        from src.library.models import LibraryItem, ContentType
+
+        content_type_strings = [
+            "book", "article", "framework", "value", "preference",
+            "memory", "insight", "goal", "skill", "web_content"
+        ]
+
+        for type_str in content_type_strings:
+            data = {
+                "id": "test-123",
+                "content_type": type_str,
+                "title": "Test Item",
+                "summary": "A test summary",
+                "full_content": "Full content here.",
+                "source_url": None,
+                "cover_image_url": None,
+                "metadata": {},
+                "themes": [],
+                "created_at": "2024-01-15T10:30:00",
+                "highlights": [],
+            }
+
+            result = LibraryItem.from_dict(data)
+            assert result.content_type == ContentType(type_str)
