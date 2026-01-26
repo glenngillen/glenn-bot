@@ -1116,3 +1116,218 @@ class TestFetchCoverFromGoogleBooks:
             result = resolver._fetch_cover_from_google_books("Test Book")
 
             assert result is None
+
+
+class TestGetPlaceholderUrl:
+    """Tests for get_placeholder_url() method that returns placeholder URLs by content type."""
+
+    def test_get_placeholder_url_returns_book_placeholder(self, temp_dir):
+        """get_placeholder_url() should return a book placeholder for BOOK content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.BOOK)
+
+        assert result is not None
+        assert "book" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_article_placeholder(self, temp_dir):
+        """get_placeholder_url() should return an article placeholder for ARTICLE content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.ARTICLE)
+
+        assert result is not None
+        assert "article" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_framework_placeholder(self, temp_dir):
+        """get_placeholder_url() should return a framework placeholder for FRAMEWORK content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.FRAMEWORK)
+
+        assert result is not None
+        assert "framework" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_value_placeholder(self, temp_dir):
+        """get_placeholder_url() should return a value placeholder for VALUE content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.VALUE)
+
+        assert result is not None
+        assert "value" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_preference_placeholder(self, temp_dir):
+        """get_placeholder_url() should return a preference placeholder for PREFERENCE content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.PREFERENCE)
+
+        assert result is not None
+        assert "preference" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_memory_placeholder(self, temp_dir):
+        """get_placeholder_url() should return a memory placeholder for MEMORY content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.MEMORY)
+
+        assert result is not None
+        assert "memory" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_insight_placeholder(self, temp_dir):
+        """get_placeholder_url() should return an insight placeholder for INSIGHT content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.INSIGHT)
+
+        assert result is not None
+        assert "insight" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_goal_placeholder(self, temp_dir):
+        """get_placeholder_url() should return a goal placeholder for GOAL content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.GOAL)
+
+        assert result is not None
+        assert "goal" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_skill_placeholder(self, temp_dir):
+        """get_placeholder_url() should return a skill placeholder for SKILL content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.SKILL)
+
+        assert result is not None
+        assert "skill" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_web_content_placeholder(self, temp_dir):
+        """get_placeholder_url() should return a web_content placeholder for WEB_CONTENT content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.WEB_CONTENT)
+
+        assert result is not None
+        assert "web_content" in result.lower()
+        assert result.endswith(".svg")
+
+    def test_get_placeholder_url_returns_distinct_placeholders_for_all_types(self, temp_dir):
+        """get_placeholder_url() should return 10 distinct placeholder URLs for all content types."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        # Get placeholders for all content types
+        placeholders = set()
+        for content_type in ContentType:
+            url = resolver.get_placeholder_url(content_type)
+            placeholders.add(url)
+
+        # Should have 10 distinct placeholders
+        assert len(placeholders) == 10
+
+    def test_get_placeholder_url_returns_path_in_assets_directory(self, temp_dir):
+        """get_placeholder_url() should return a path within the assets/images/placeholders directory."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.get_placeholder_url(ContentType.BOOK)
+
+        # The path should contain the placeholders directory
+        assert "placeholders" in result
+
+    def test_get_placeholder_url_returns_consistent_results(self, temp_dir):
+        """get_placeholder_url() should return the same URL for the same content type."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        # Call twice with the same content type
+        result1 = resolver.get_placeholder_url(ContentType.FRAMEWORK)
+        result2 = resolver.get_placeholder_url(ContentType.FRAMEWORK)
+
+        assert result1 == result2
+
+    def test_get_placeholder_url_uses_content_type_value_in_filename(self, temp_dir):
+        """get_placeholder_url() should use the content type value as part of the filename."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        # Each content type should have its value in the filename
+        for content_type in ContentType:
+            result = resolver.get_placeholder_url(content_type)
+            assert content_type.value in result.lower()
