@@ -85,8 +85,8 @@ data/library-site/         # Generated site
 ### Phase 1: Project Setup & Dependencies (6 tasks)
 
 - [x] 1. Add Jinja2 dependency to requirements.txt
-- [ ] 2. Create `src/library/` package with `__init__.py`
-- [ ] 3. Add library settings to `src/config.py`:
+- [x] 2. Create `src/library/` package with `__init__.py`
+- [x] 3. Add library settings to `src/config.py`:
   - `library_data_dir: Path = Path("./data/library")`
   - `library_site_dir: Path = Path("./data/library-site")`
   - `library_server_port: int = 8080`
