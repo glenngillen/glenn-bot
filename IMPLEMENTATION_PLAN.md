@@ -125,7 +125,7 @@ data/library-site/         # Generated site
 - [x] 26. Write tests for _generate_summary() truncation (200 char limit with ellipsis)
 - [x] 27. Implement _generate_summary() summary truncation logic
 - [x] 28. Write tests for _extract_highlights() (key_points from values, steps from frameworks)
-- [ ] 29. Implement _extract_highlights() extraction by content type
+- [x] 29. Implement _extract_highlights() extraction by content type
 - [ ] 30. Write tests for _convert_document() transforming ChromaDB doc to LibraryItem
 - [ ] 31. Implement _convert_document() method
 - [ ] 32. Write tests for export_all() returning List[LibraryItem]
