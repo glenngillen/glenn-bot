@@ -5798,3 +5798,409 @@ class TestMiscellaneousTheme:
         assert len(result) == 1
         assert result[0].item_id == "multi-low-item"
         assert result[0].theme_id == "miscellaneous"
+
+
+class TestGetItemsForTheme:
+    """Tests for get_items_for_theme() method returning assigned items."""
+
+    def test_get_items_for_theme_returns_assigned_items(
+        self, mock_ollama_client, temp_dir
+    ):
+        """get_items_for_theme should return items assigned to the specified theme."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Create items
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Book One",
+                summary="A book about technology",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.ARTICLE,
+                title="Article Two",
+                summary="An article about business",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-3",
+                content_type=ContentType.FRAMEWORK,
+                title="Framework Three",
+                summary="A framework about technology",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Set up assignments (item-1 and item-3 assigned to "technology")
+        generator.assignments = [
+            ThemeAssignment(
+                item_id="item-1",
+                theme_id="technology",
+                confidence=0.9,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="item-2",
+                theme_id="business",
+                confidence=0.8,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="item-3",
+                theme_id="technology",
+                confidence=0.75,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        result = generator.get_items_for_theme("technology", items)
+
+        assert len(result) == 2
+        item_ids = {item.id for item in result}
+        assert item_ids == {"item-1", "item-3"}
+
+    def test_get_items_for_theme_returns_empty_for_no_assignments(
+        self, mock_ollama_client, temp_dir
+    ):
+        """get_items_for_theme should return empty list when theme has no assigned items."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Book One",
+                summary="A book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Assign to a different theme
+        generator.assignments = [
+            ThemeAssignment(
+                item_id="item-1",
+                theme_id="business",
+                confidence=0.9,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        result = generator.get_items_for_theme("technology", items)
+
+        assert result == []
+
+    def test_get_items_for_theme_returns_empty_for_nonexistent_theme(
+        self, mock_ollama_client, temp_dir
+    ):
+        """get_items_for_theme should return empty list for a theme that doesn't exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Book One",
+                summary="A book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        generator.assignments = []
+
+        result = generator.get_items_for_theme("nonexistent-theme", items)
+
+        assert result == []
+
+    def test_get_items_for_theme_with_empty_items_list(
+        self, mock_ollama_client, temp_dir
+    ):
+        """get_items_for_theme should return empty list when items list is empty."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        generator.assignments = [
+            ThemeAssignment(
+                item_id="item-1",
+                theme_id="technology",
+                confidence=0.9,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        result = generator.get_items_for_theme("technology", [])
+
+        assert result == []
+
+    def test_get_items_for_theme_with_no_assignments(
+        self, mock_ollama_client, temp_dir
+    ):
+        """get_items_for_theme should return empty list when no assignments exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Book One",
+                summary="A book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        generator.assignments = []
+
+        result = generator.get_items_for_theme("technology", items)
+
+        assert result == []
+
+    def test_get_items_for_theme_handles_item_in_multiple_themes(
+        self, mock_ollama_client, temp_dir
+    ):
+        """get_items_for_theme should correctly return item assigned to multiple themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="multi-theme-item",
+                content_type=ContentType.BOOK,
+                title="Multi Theme Book",
+                summary="A book about tech and business",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="tech-only-item",
+                content_type=ContentType.ARTICLE,
+                title="Tech Only Article",
+                summary="An article about technology",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # multi-theme-item is assigned to both themes
+        generator.assignments = [
+            ThemeAssignment(
+                item_id="multi-theme-item",
+                theme_id="technology",
+                confidence=0.85,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="multi-theme-item",
+                theme_id="business",
+                confidence=0.75,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="tech-only-item",
+                theme_id="technology",
+                confidence=0.9,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        # Both items should be in technology
+        tech_result = generator.get_items_for_theme("technology", items)
+        assert len(tech_result) == 2
+        tech_ids = {item.id for item in tech_result}
+        assert tech_ids == {"multi-theme-item", "tech-only-item"}
+
+        # Only multi-theme-item should be in business
+        business_result = generator.get_items_for_theme("business", items)
+        assert len(business_result) == 1
+        assert business_result[0].id == "multi-theme-item"
+
+    def test_get_items_for_theme_ignores_items_not_in_provided_list(
+        self, mock_ollama_client, temp_dir
+    ):
+        """get_items_for_theme should only return items that are in the provided items list."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Only provide item-1 in the items list
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Book One",
+                summary="A book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Assignments include item-2 which is not in the items list
+        generator.assignments = [
+            ThemeAssignment(
+                item_id="item-1",
+                theme_id="technology",
+                confidence=0.9,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="item-2",  # Not in items list
+                theme_id="technology",
+                confidence=0.85,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        result = generator.get_items_for_theme("technology", items)
+
+        # Only item-1 should be returned since item-2 is not in the items list
+        assert len(result) == 1
+        assert result[0].id == "item-1"
+
+    def test_get_items_for_theme_preserves_item_order(
+        self, mock_ollama_client, temp_dir
+    ):
+        """get_items_for_theme should return items in consistent order."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-a",
+                content_type=ContentType.BOOK,
+                title="Book A",
+                summary="A book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-b",
+                content_type=ContentType.ARTICLE,
+                title="Article B",
+                summary="An article",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-c",
+                content_type=ContentType.FRAMEWORK,
+                title="Framework C",
+                summary="A framework",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        generator.assignments = [
+            ThemeAssignment(
+                item_id="item-c",
+                theme_id="technology",
+                confidence=0.9,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="item-a",
+                theme_id="technology",
+                confidence=0.85,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="item-b",
+                theme_id="technology",
+                confidence=0.8,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        result = generator.get_items_for_theme("technology", items)
+
+        assert len(result) == 3
+        # Items should be in the order they appear in the items list
+        assert result[0].id == "item-a"
+        assert result[1].id == "item-b"
+        assert result[2].id == "item-c"
