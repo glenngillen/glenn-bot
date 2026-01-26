@@ -6,7 +6,7 @@ documents into LibraryItem instances suitable for display in the static
 website library.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from src.library.models import ContentType
 
@@ -123,3 +123,46 @@ class ContentExporter:
             return stripped
 
         return stripped[:200] + "..."
+
+    def _extract_highlights(
+        self, metadata: Optional[dict[str, Any]], content_type: ContentType
+    ) -> list[str]:
+        """Extract highlight strings from metadata based on content type.
+
+        For VALUE and INSIGHT types, extracts the 'key_points' field.
+        For FRAMEWORK types, extracts the 'steps' field.
+        Other content types return an empty list.
+
+        Args:
+            metadata: Document metadata dict, may contain 'key_points' or 'steps'.
+            content_type: The ContentType of the document.
+
+        Returns:
+            A list of highlight strings. Returns empty list if metadata is
+            None/empty, the relevant field doesn't exist, or the field is
+            not a list.
+        """
+        if not metadata:
+            return []
+
+        # Determine which field to extract based on content type
+        if content_type in (ContentType.VALUE, ContentType.INSIGHT):
+            field_name = "key_points"
+        elif content_type == ContentType.FRAMEWORK:
+            field_name = "steps"
+        else:
+            return []
+
+        # Get the field value
+        items = metadata.get(field_name)
+
+        # Must be a list
+        if not isinstance(items, list):
+            return []
+
+        # Return empty list if the list is empty
+        if not items:
+            return []
+
+        # Convert all items to strings
+        return [str(item) for item in items]
