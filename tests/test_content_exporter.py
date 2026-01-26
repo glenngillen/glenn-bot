@@ -1178,3 +1178,524 @@ class TestConvertDocument:
             "Ask questions without assumption",
             "Seek to understand before judging",
         ]
+
+
+class TestExportAll:
+    """Tests for export_all() method returning List[LibraryItem]."""
+
+    def test_export_all_returns_list(self, mock_knowledge_base):
+        """export_all should return a list."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 0,
+            "filters": {"type": None, "source": None},
+            "documents": [],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert isinstance(result, list)
+
+    def test_export_all_returns_empty_list_for_empty_knowledge_base(
+        self, mock_knowledge_base
+    ):
+        """export_all should return empty list when knowledge base is empty."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 0,
+            "filters": {"type": None, "source": None},
+            "documents": [],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert result == []
+
+    def test_export_all_returns_library_items(self, mock_knowledge_base):
+        """export_all should return LibraryItem instances."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import LibraryItem
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Test content",
+                    "metadata": {"type": "value", "name": "Test Value"},
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert len(result) == 1
+        assert isinstance(result[0], LibraryItem)
+
+    def test_export_all_calls_knowledge_base_export_knowledge(self, mock_knowledge_base):
+        """export_all should call knowledge_base.export_knowledge()."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 0,
+            "filters": {"type": None, "source": None},
+            "documents": [],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        exporter.export_all()
+
+        mock_knowledge_base.export_knowledge.assert_called_once()
+
+    def test_export_all_converts_multiple_documents(self, mock_knowledge_base):
+        """export_all should convert all documents from knowledge base."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import LibraryItem
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 3,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Value content",
+                    "metadata": {"type": "value", "name": "Value 1"},
+                },
+                {
+                    "id": "doc-2",
+                    "content": "Framework content",
+                    "metadata": {"type": "framework", "name": "Framework 1"},
+                },
+                {
+                    "id": "doc-3",
+                    "content": "Memory content",
+                    "metadata": {"type": "memory"},
+                },
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert len(result) == 3
+        assert all(isinstance(item, LibraryItem) for item in result)
+
+    def test_export_all_preserves_document_ids(self, mock_knowledge_base):
+        """export_all should preserve document IDs in LibraryItems."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 2,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "unique-id-abc",
+                    "content": "Content 1",
+                    "metadata": {"type": "value"},
+                },
+                {
+                    "id": "unique-id-xyz",
+                    "content": "Content 2",
+                    "metadata": {"type": "framework"},
+                },
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        ids = [item.id for item in result]
+        assert "unique-id-abc" in ids
+        assert "unique-id-xyz" in ids
+
+    def test_export_all_converts_content_types_correctly(self, mock_knowledge_base):
+        """export_all should correctly convert content types."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 3,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Value",
+                    "metadata": {"type": "value"},
+                },
+                {
+                    "id": "doc-2",
+                    "content": "Framework",
+                    "metadata": {"type": "framework"},
+                },
+                {
+                    "id": "doc-3",
+                    "content": "Web content",
+                    "metadata": {"type": "web"},
+                },
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        types_by_id = {item.id: item.content_type for item in result}
+        assert types_by_id["doc-1"] == ContentType.VALUE
+        assert types_by_id["doc-2"] == ContentType.FRAMEWORK
+        assert types_by_id["doc-3"] == ContentType.WEB_CONTENT
+
+    def test_export_all_sets_titles_from_metadata(self, mock_knowledge_base):
+        """export_all should set titles from metadata name field."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Content here",
+                    "metadata": {"type": "value", "name": "Custom Title"},
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert result[0].title == "Custom Title"
+
+    def test_export_all_extracts_highlights_for_values(self, mock_knowledge_base):
+        """export_all should extract key_points as highlights for values."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Value content",
+                    "metadata": {
+                        "type": "value",
+                        "name": "My Value",
+                        "key_points": ["Point 1", "Point 2"],
+                    },
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert result[0].highlights == ["Point 1", "Point 2"]
+
+    def test_export_all_extracts_highlights_for_frameworks(self, mock_knowledge_base):
+        """export_all should extract steps as highlights for frameworks."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Framework content",
+                    "metadata": {
+                        "type": "framework",
+                        "name": "My Framework",
+                        "steps": ["Step 1", "Step 2", "Step 3"],
+                    },
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert result[0].highlights == ["Step 1", "Step 2", "Step 3"]
+
+    def test_export_all_sets_source_url_from_metadata(self, mock_knowledge_base):
+        """export_all should set source_url from metadata source field."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Web content",
+                    "metadata": {
+                        "type": "web",
+                        "source": "https://example.com/article",
+                    },
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert result[0].source_url == "https://example.com/article"
+
+    def test_export_all_handles_documents_without_metadata(self, mock_knowledge_base):
+        """export_all should handle documents with empty metadata."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Content without metadata",
+                    "metadata": {},
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert len(result) == 1
+        assert result[0].content_type == ContentType.WEB_CONTENT
+
+    def test_export_all_handles_documents_with_none_metadata(self, mock_knowledge_base):
+        """export_all should handle documents with None metadata."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Content with None metadata",
+                    "metadata": None,
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert len(result) == 1
+        assert result[0].content_type == ContentType.WEB_CONTENT
+
+    def test_export_all_sets_cover_image_url_to_none(self, mock_knowledge_base):
+        """export_all should set cover_image_url to None (resolved later)."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Content",
+                    "metadata": {"type": "book"},
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert result[0].cover_image_url is None
+
+    def test_export_all_sets_themes_to_empty_list(self, mock_knowledge_base):
+        """export_all should set themes to empty list (assigned later)."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Content",
+                    "metadata": {"type": "value"},
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert result[0].themes == []
+
+    def test_export_all_sets_created_at_to_datetime(self, mock_knowledge_base):
+        """export_all should set created_at to a datetime instance."""
+        from src.library.content_exporter import ContentExporter
+        from datetime import datetime
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 1,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Content",
+                    "metadata": {"type": "value"},
+                }
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert isinstance(result[0].created_at, datetime)
+
+    def test_export_all_full_integration(self, mock_knowledge_base):
+        """Full integration test of export_all with realistic data."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType, LibraryItem
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "glenn_knowledge",
+            "total_documents": 3,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {
+                    "id": "value-001",
+                    "content": "Curiosity is essential for growth and understanding.",
+                    "metadata": {
+                        "type": "value",
+                        "name": "Curiosity",
+                        "key_points": [
+                            "Ask questions without assumption",
+                            "Be open to new perspectives",
+                        ],
+                    },
+                },
+                {
+                    "id": "framework-001",
+                    "content": "A systematic approach to problem solving.",
+                    "metadata": {
+                        "type": "framework",
+                        "name": "Problem Solving",
+                        "steps": ["Define", "Analyze", "Solve", "Review"],
+                    },
+                },
+                {
+                    "id": "web-001",
+                    "content": "An interesting article about technology trends.",
+                    "metadata": {
+                        "type": "web",
+                        "source": "https://example.com/tech-trends",
+                    },
+                },
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        # Verify count
+        assert len(result) == 3
+
+        # Verify all are LibraryItems
+        assert all(isinstance(item, LibraryItem) for item in result)
+
+        # Verify specific items
+        items_by_id = {item.id: item for item in result}
+
+        # Check value
+        value = items_by_id["value-001"]
+        assert value.content_type == ContentType.VALUE
+        assert value.title == "Curiosity"
+        assert value.highlights == [
+            "Ask questions without assumption",
+            "Be open to new perspectives",
+        ]
+
+        # Check framework
+        framework = items_by_id["framework-001"]
+        assert framework.content_type == ContentType.FRAMEWORK
+        assert framework.title == "Problem Solving"
+        assert framework.highlights == ["Define", "Analyze", "Solve", "Review"]
+
+        # Check web content
+        web = items_by_id["web-001"]
+        assert web.content_type == ContentType.WEB_CONTENT
+        assert web.source_url == "https://example.com/tech-trends"
+
+    def test_export_all_preserves_order_of_documents(self, mock_knowledge_base):
+        """export_all should preserve the order of documents from knowledge base."""
+        from src.library.content_exporter import ContentExporter
+
+        mock_knowledge_base.export_knowledge.return_value = {
+            "export_version": "1.0",
+            "export_timestamp": "2026-01-26T12:00:00",
+            "collection_name": "test_collection",
+            "total_documents": 3,
+            "filters": {"type": None, "source": None},
+            "documents": [
+                {"id": "first", "content": "First", "metadata": {"type": "value"}},
+                {"id": "second", "content": "Second", "metadata": {"type": "value"}},
+                {"id": "third", "content": "Third", "metadata": {"type": "value"}},
+            ],
+        }
+
+        exporter = ContentExporter(mock_knowledge_base)
+        result = exporter.export_all()
+
+        assert [item.id for item in result] == ["first", "second", "third"]
