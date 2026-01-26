@@ -285,7 +285,7 @@ data/library-site/         # Generated site
 
 ### Phase 12: CLI Integration (14 tasks)
 
-- [ ] 159. Write tests for /build-library command handler
+- [x] 159. Write tests for /build-library command handler
 - [ ] 160. Implement _build_library() method in GlennBot
 - [ ] 161. Add /build-library to handle_command() in src/main.py
 - [ ] 162. Write tests for /build-library --serve flag
