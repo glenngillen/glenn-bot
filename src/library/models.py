@@ -8,10 +8,25 @@ This module defines:
 - ThemeAssignment: Item-to-theme mapping with confidence score
 """
 
-# Placeholder - implementations will be added following TDD
-# This file exists to allow the package __init__.py imports to work
+from enum import Enum
 
-ContentType = None
+
+class ContentType(Enum):
+    """Enum of supported content types for library items."""
+
+    BOOK = "book"
+    ARTICLE = "article"
+    FRAMEWORK = "framework"
+    VALUE = "value"
+    PREFERENCE = "preference"
+    MEMORY = "memory"
+    INSIGHT = "insight"
+    GOAL = "goal"
+    SKILL = "skill"
+    WEB_CONTENT = "web_content"
+
+
+# Placeholder - implementations will be added following TDD
 LibraryItem = None
 Theme = None
 ThemeAssignment = None
