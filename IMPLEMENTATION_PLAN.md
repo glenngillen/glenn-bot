@@ -302,7 +302,7 @@ data/library-site/         # Generated site
 
 ### Phase 13: Edge Cases & Polish (14 tasks)
 
-- [ ] 173. Write tests for empty knowledge base handling
+- [x] 173. Write tests for empty knowledge base handling
 - [ ] 174. Implement "No content yet" message in templates
 - [ ] 175. Write tests for long content truncation
 - [ ] 176. Implement CSS truncation with ellipsis
