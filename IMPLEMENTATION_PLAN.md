@@ -275,8 +275,8 @@ data/library-site/         # Generated site
 
 ### Phase 11: Local Server (7 tasks)
 
-- [ ] 152. Create test file `tests/test_library_server.py`
-- [ ] 153. Write tests for LibraryServer initialization
+- [x] 152. Create test file `tests/test_library_server.py`
+- [x] 153. Write tests for LibraryServer initialization
 - [ ] 154. Implement LibraryServer class in `src/library/server.py`
 - [ ] 155. Write tests for serve() starting HTTP server
 - [ ] 156. Implement serve() using http.server
