@@ -1,3 +1,7 @@
+<!-- Synapse Agent Instructions v1.0.0 -->
+<!-- DO NOT EDIT THE SYNAPSE-MANAGED SECTION BELOW -->
+<!-- Last synced: 2026-01-12T04:39:33.079Z -->
+
 **Note**: This project uses [bd (beads)](https://github.com/steveyegge/beads)
 for issue tracking. Use `bd` commands instead of markdown TODOs.
 See the Issue Tracking section below for workflow details.
@@ -5,6 +9,40 @@ See the Issue Tracking section below for workflow details.
 # Agent Instructions
 
 This file provides instructions for AI agents working on this project.
+
+## Worktree Enforcement (CRITICAL)
+
+**ALL development MUST happen in worktrees, NEVER in the main repository directory.**
+
+### How to Verify You're in a Worktree
+
+Before making ANY code changes, verify your working directory:
+
+```bash
+# Check if you're in a worktree (should see "gitdir:" content)
+cat .git
+# If .git is a FILE containing "gitdir:", you're in a worktree
+# If .git is a DIRECTORY, you're in the main repo - STOP IMMEDIATELY
+```
+
+Alternatively, check the path:
+- Correct: `.worktrees/<issue-id>/` (e.g., `.worktrees/synapse-abc123/`)
+- Wrong: The main project directory (e.g., `/Users/*/Development/*/glenn-bot/`)
+
+### If You're in the Main Repository
+
+**STOP IMMEDIATELY. Do not make changes.**
+
+1. Exit the current session
+2. Report the error to the user
+3. Wait for proper worktree setup before continuing
+
+### Why This Matters
+
+- Worktrees enable concurrent development on multiple issues
+- The main repository must stay on the `main` branch and clean
+- Each issue gets its own worktree with its own feature branch
+- This prevents merge conflicts and keeps work isolated
 
 ## Issue Tracking with bd (beads)
 
@@ -70,14 +108,14 @@ bd close bd-42 --reason "Completed" --json
 
 ### Important Rules
 
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ✅ Run `bd <cmd> --help` to discover available flags
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
+- Use bd for ALL task tracking
+- Always use `--json` flag for programmatic use
+- Link discovered work with `discovered-from` dependencies
+- Check `bd ready` before asking "what should I work on?"
+- Run `bd <cmd> --help` to discover available flags
+- Do NOT create markdown TODO lists
+- Do NOT use external issue trackers
+- Do NOT duplicate tracking systems
 
 ## Landing the Plane (Session Completion)
 
@@ -104,3 +142,8 @@ bd close bd-42 --reason "Completed" --json
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+<!-- END SYNAPSE-MANAGED SECTION -->
+<!-- Project-specific instructions below this line will be preserved during sync -->
+
+
