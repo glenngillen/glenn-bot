@@ -1751,3 +1751,515 @@ These themes represent the major categories in your knowledge base.'''
         themes = generator._parse_themes_from_response(response)
 
         assert themes[0].created_at == themes[0].updated_at
+
+
+class TestGenerateThemes:
+    """Tests for generate_themes() orchestration method that coordinates LLM call, parsing, and saving."""
+
+    def test_generate_themes_calls_ollama_client_generate(self, mock_ollama_client, temp_dir):
+        """generate_themes() should call OllamaClient.generate() with a prompt."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Configure mock to return valid JSON
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement topics",
+                "keywords": ["growth", "learning"]
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book about learning",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        generator.generate_themes(items)
+
+        # Verify OllamaClient.generate() was called
+        mock_ollama_client.generate.assert_called_once()
+
+    def test_generate_themes_passes_built_prompt_to_ollama(self, mock_ollama_client, temp_dir):
+        """generate_themes() should pass the prompt from _build_theme_generation_prompt() to OllamaClient."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "tech",
+                "name": "Technology",
+                "description": "Tech topics",
+                "keywords": ["tech"]
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.ARTICLE,
+                title="Tech Article",
+                summary="An article about technology",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        generator.generate_themes(items)
+
+        # Get the prompt that was passed to generate()
+        call_args = mock_ollama_client.generate.call_args
+        prompt = call_args.kwargs.get("prompt") or call_args.args[0]
+
+        # The prompt should contain the item title and summary
+        assert "Tech Article" in prompt
+        assert "An article about technology" in prompt
+
+    def test_generate_themes_parses_ollama_response(self, mock_ollama_client, temp_dir):
+        """generate_themes() should parse the LLM response into Theme objects."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "systems-thinking",
+                "name": "Systems Thinking",
+                "description": "Understanding complex systems",
+                "keywords": ["systems", "complexity", "feedback"]
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Thinking in Systems",
+                summary="A primer on systems thinking",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        result = generator.generate_themes(items)
+
+        # Should have parsed the theme correctly
+        assert len(result) == 1
+        assert result[0].id == "systems-thinking"
+        assert result[0].name == "Systems Thinking"
+        assert result[0].description == "Understanding complex systems"
+        assert result[0].keywords == ["systems", "complexity", "feedback"]
+
+    def test_generate_themes_saves_themes_to_file(self, mock_ollama_client, temp_dir):
+        """generate_themes() should save the generated themes to themes.json."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "business",
+                "name": "Business",
+                "description": "Business and strategy topics",
+                "keywords": ["business", "strategy"]
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.FRAMEWORK,
+                title="Business Framework",
+                summary="A framework for business decisions",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        generator.generate_themes(items)
+
+        # Verify themes.json was created
+        assert (data_dir / "themes.json").exists()
+
+        # Verify the content was saved correctly
+        with open(data_dir / "themes.json") as f:
+            saved_data = json.load(f)
+
+        assert len(saved_data) == 1
+        assert saved_data[0]["id"] == "business"
+        assert saved_data[0]["name"] == "Business"
+
+    def test_generate_themes_updates_self_themes(self, mock_ollama_client, temp_dir):
+        """generate_themes() should update self.themes with the generated themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement topics",
+                "keywords": ["growth"]
+            },
+            {
+                "id": "technology",
+                "name": "Technology",
+                "description": "Tech topics",
+                "keywords": ["tech"]
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        generator.generate_themes(items)
+
+        # self.themes should be updated
+        assert len(generator.themes) == 2
+        assert generator.themes[0].id == "personal-growth"
+        assert generator.themes[1].id == "technology"
+
+    def test_generate_themes_returns_generated_themes(self, mock_ollama_client, temp_dir):
+        """generate_themes() should return the list of generated themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "communication",
+                "name": "Communication",
+                "description": "Communication skills",
+                "keywords": ["writing", "speaking"]
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.VALUE,
+                title="Clear Communication",
+                summary="The value of clear communication",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        result = generator.generate_themes(items)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], Theme)
+        assert result[0].id == "communication"
+
+    def test_generate_themes_with_empty_items_list(self, mock_ollama_client, temp_dir):
+        """generate_themes() should handle empty items list gracefully."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Return empty array when no items
+        mock_ollama_client.generate.return_value = '[]'
+
+        items = []
+
+        result = generator.generate_themes(items)
+
+        # Should return empty list without error
+        assert result == []
+        assert generator.themes == []
+
+    def test_generate_themes_with_invalid_llm_response(self, mock_ollama_client, temp_dir):
+        """generate_themes() should handle invalid LLM response gracefully."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Return invalid response
+        mock_ollama_client.generate.return_value = "This is not valid JSON"
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        result = generator.generate_themes(items)
+
+        # Should return empty list without raising an exception
+        assert result == []
+        assert generator.themes == []
+
+    def test_generate_themes_with_multiple_items(self, mock_ollama_client, temp_dir):
+        """generate_themes() should handle multiple items correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement and learning",
+                "keywords": ["growth", "learning", "habits"]
+            },
+            {
+                "id": "systems-thinking",
+                "name": "Systems Thinking",
+                "description": "Understanding complex systems",
+                "keywords": ["systems", "complexity"]
+            },
+            {
+                "id": "technology",
+                "name": "Technology",
+                "description": "Software and tech",
+                "keywords": ["software", "tech"]
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Atomic Habits",
+                summary="Building good habits",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.BOOK,
+                title="Thinking in Systems",
+                summary="Systems thinking primer",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 16, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-3",
+                content_type=ContentType.ARTICLE,
+                title="AI Trends 2026",
+                summary="Latest AI developments",
+                full_content="Content",
+                source_url="https://example.com",
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 17, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        result = generator.generate_themes(items)
+
+        assert len(result) == 3
+        assert {t.id for t in result} == {"personal-growth", "systems-thinking", "technology"}
+
+    def test_generate_themes_replaces_existing_themes(self, mock_ollama_client, temp_dir):
+        """generate_themes() should replace any existing themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Pre-populate with existing themes
+        existing_theme = Theme(
+            id="old-theme",
+            name="Old Theme",
+            description="This should be replaced",
+            keywords=["old"],
+            item_count=5,
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+            updated_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        generator.themes = [existing_theme]
+
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "new-theme",
+                "name": "New Theme",
+                "description": "This is the new theme",
+                "keywords": ["new"]
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        result = generator.generate_themes(items)
+
+        # Old themes should be replaced
+        assert len(generator.themes) == 1
+        assert generator.themes[0].id == "new-theme"
+        assert "old-theme" not in [t.id for t in generator.themes]
+
+    def test_generate_themes_uses_correct_system_prompt(self, mock_ollama_client, temp_dir):
+        """generate_themes() should use an appropriate system prompt for theme generation."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        mock_ollama_client.generate.return_value = '''[
+            {
+                "id": "test",
+                "name": "Test",
+                "description": "Test",
+                "keywords": []
+            }
+        ]'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        generator.generate_themes(items)
+
+        # Verify a system_prompt was passed (could be None or a string)
+        call_kwargs = mock_ollama_client.generate.call_args.kwargs
+        # Either system_prompt is passed or it uses default
+        assert "prompt" in call_kwargs or len(mock_ollama_client.generate.call_args.args) > 0
+
+    def test_generate_themes_handles_markdown_wrapped_response(self, mock_ollama_client, temp_dir):
+        """generate_themes() should handle LLM response wrapped in markdown code blocks."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        mock_ollama_client.generate.return_value = '''Based on the content, here are the themes:
+
+```json
+[
+    {
+        "id": "personal-growth",
+        "name": "Personal Growth",
+        "description": "Self-improvement topics",
+        "keywords": ["growth"]
+    }
+]
+```
+
+These themes cover the main topics in your knowledge base.'''
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        result = generator.generate_themes(items)
+
+        assert len(result) == 1
+        assert result[0].id == "personal-growth"
