@@ -174,6 +174,13 @@ Let's collaborate!
 - `/worst-responses` - View lowest-rated responses for improvement
 - `/feedback-insights` - Get insights from collected feedback
 
+### Library
+- `/build-library` - Build static library site from knowledge base
+- `/build-library --serve` - Build and start local server
+- `/build-library --force` - Force regenerate themes and covers
+- `/serve-library` - Start server for existing library site
+- `/library-status` - Show library build status and statistics
+
 ## Tips:
 - **Context Switching**: Use contexts to maintain separate project spaces
 - **Memory**: The system automatically remembers important information from conversations

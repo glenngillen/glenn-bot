@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="267" viewBox="0 0 200 267">
+  <defs>
+    <linearGradient id="skillGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FB923C"/>
+      <stop offset="100%" style="stop-color:#F97316"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="267" rx="8" fill="url(#skillGradient)"/>
+  <!-- Wrench/tool icon -->
+  <g transform="translate(50, 83.5)" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Wrench head -->
+    <path d="M20 5 C5 15, 0 35, 10 50 L35 25"/>
+    <path d="M10 50 C20 55, 30 50, 35 40"/>
+    <path d="M20 5 C30 0, 40 5, 45 15"/>
+    <path d="M45 15 L35 25"/>
+    <!-- Wrench handle -->
+    <rect x="30" y="30" width="60" height="20" rx="3" transform="rotate(45 60 40)"/>
+    <!-- Wrench jaw detail -->
+    <line x1="18" y1="30" x2="28" y2="20"/>
+  </g>
+</svg>

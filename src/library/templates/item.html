@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "macros.html" import badge, theme_badge, highlight, placeholder_icon, format_content_type %}
+
+{% block title %}{{ item.title }}{% endblock %}
+{% block description %}{{ item.summary }}{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <span class="breadcrumbs-separator" aria-hidden="true">&gt;</span>
+    {% if item.themes and item.themes|length > 0 %}
+        <a href="/theme/{{ item.themes[0] }}/">{{ theme_names.get(item.themes[0], item.themes[0]) }}</a>
+        <span class="breadcrumbs-separator" aria-hidden="true">&gt;</span>
+    {% endif %}
+    <span class="breadcrumbs-current" aria-current="page">{{ item.title }}</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+{# Item Header with Cover and Info #}
+<header class="item-header">
+    <div class="item-cover">
+        {% if item.cover_image_url %}
+            <img src="{{ item.cover_image_url }}" alt="{{ item.title }}">
+        {% else %}
+            <div class="card-image card-image--{{ 'book' if item.content_type == 'book' else 'default' }} card-image--placeholder">
+                {{ placeholder_icon(item.content_type) }}
+            </div>
+        {% endif %}
+    </div>
+    <div class="item-info">
+        <h1 class="item-title">{{ item.title }}</h1>
+        {{ badge(item.content_type) }}
+        <p class="item-summary">{{ item.summary }}</p>
+
+        {# Source Link Button #}
+        {% if item.source_url %}
+        <a href="{{ item.source_url }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+            View Source
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+            </svg>
+        </a>
+        {% endif %}
+    </div>
+</header>
+
+{# Highlights Section #}
+{% if item.highlights and item.highlights|length > 0 %}
+<section class="highlights-section">
+    <h2 class="highlights-title">Key Highlights</h2>
+    {% for text in item.highlights %}
+        {{ highlight(text) }}
+    {% endfor %}
+</section>
+{% endif %}
+
+{# Full Content (if different from summary) #}
+{% if item.full_content and item.full_content != item.summary %}
+<section class="content-section mb-8">
+    <h2>Full Content</h2>
+    <div class="content-body">
+        {{ item.full_content|safe if item.full_content|length < 5000 else item.full_content[:5000]|safe + '...' }}
+    </div>
+</section>
+{% endif %}
+
+{# Themes Section #}
+{% if item.themes and item.themes|length > 0 %}
+<section class="themes-section">
+    <h2>Themes</h2>
+    <div class="themes-list">
+        {% for theme_id in item.themes %}
+            {{ theme_badge(theme_id, theme_names.get(theme_id, theme_id)) }}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{# Metadata Section #}
+<section class="metadata-section">
+    <div class="metadata-item">
+        <span class="metadata-label">Added:</span>
+        <span class="metadata-value">{{ item.created_at.strftime('%B %d, %Y') if item.created_at else 'Unknown' }}</span>
+    </div>
+    <div class="metadata-item">
+        <span class="metadata-label">Type:</span>
+        <span class="metadata-value">{{ format_content_type(item.content_type) }}</span>
+    </div>
+    {% if item.metadata.get('author') %}
+    <div class="metadata-item">
+        <span class="metadata-label">Author:</span>
+        <span class="metadata-value">{{ item.metadata.author }}</span>
+    </div>
+    {% endif %}
+    {% if item.metadata.get('isbn') %}
+    <div class="metadata-item">
+        <span class="metadata-label">ISBN:</span>
+        <span class="metadata-value">{{ item.metadata.isbn }}</span>
+    </div>
+    {% endif %}
+</section>
+
+{# Back Link #}
+<section class="text-center mt-8">
+    <a href="/all/" class="btn btn-secondary">Back to All Content</a>
+</section>
+{% endblock %}

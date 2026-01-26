@@ -1,0 +1,156 @@
+{# Macro definitions for reusable template components #}
+
+{#
+  Render a content card for a library item.
+
+  Args:
+    item: LibraryItem dict with id, title, summary, content_type, cover_image_url
+#}
+{% macro card(item) %}
+<article class="card">
+    <a href="/item/{{ item.id }}/" class="card-link">
+        <div class="card-image card-image--{{ 'book' if item.content_type == 'book' else 'default' }}{% if not item.cover_image_url %} card-image--placeholder{% endif %}">
+            {% if item.cover_image_url %}
+                <img src="{{ item.cover_image_url }}" alt="{{ item.title }}" loading="lazy">
+            {% else %}
+                {# Use inline SVG placeholder based on content type #}
+                {{ placeholder_icon(item.content_type) }}
+            {% endif %}
+        </div>
+        <div class="card-content">
+            <span class="badge badge-{{ item.content_type }}">{{ format_content_type(item.content_type) }}</span>
+            <h3 class="card-title">{{ item.title }}</h3>
+            <p class="card-summary">{{ item.summary }}</p>
+        </div>
+    </a>
+</article>
+{% endmacro %}
+
+{#
+  Render a theme card for the home page.
+
+  Args:
+    theme: Theme dict with id, name, description, item_count
+#}
+{% macro theme_card(theme) %}
+<article class="theme-card">
+    <a href="/theme/{{ theme.id }}/" class="theme-card-link">
+        <h3 class="theme-card-title">{{ theme.name }}</h3>
+        <p class="theme-card-description">{{ theme.description }}</p>
+        <span class="theme-card-count">{{ theme.item_count }} item{{ 's' if theme.item_count != 1 else '' }}</span>
+    </a>
+</article>
+{% endmacro %}
+
+{#
+  Render a content type badge.
+
+  Args:
+    content_type: String like "book", "article", "framework", etc.
+#}
+{% macro badge(content_type) %}
+<span class="badge badge-{{ content_type }}">{{ format_content_type(content_type) }}</span>
+{% endmacro %}
+
+{#
+  Render a theme badge (clickable link to theme page).
+
+  Args:
+    theme_id: Theme ID (slug)
+    theme_name: Theme display name
+#}
+{% macro theme_badge(theme_id, theme_name) %}
+<a href="/theme/{{ theme_id }}/" class="badge badge-theme">{{ theme_name }}</a>
+{% endmacro %}
+
+{#
+  Render a highlight/blockquote.
+
+  Args:
+    text: The highlight text to display
+#}
+{% macro highlight(text) %}
+<blockquote class="highlight">{{ text }}</blockquote>
+{% endmacro %}
+
+{#
+  Format content type for display (e.g., "web_content" -> "Web Content").
+
+  Args:
+    content_type: The raw content type string
+#}
+{% macro format_content_type(content_type) %}
+{%- for word in content_type.split('_') -%}
+{{ word|capitalize }}{% if not loop.last %} {% endif %}
+{%- endfor -%}
+{% endmacro %}
+
+{#
+  Render a placeholder icon SVG based on content type.
+  These match the placeholder icons in assets/images/placeholders/
+
+  Args:
+    content_type: The content type string
+#}
+{% macro placeholder_icon(content_type) %}
+{% if content_type == 'book' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 2C4.9 2 4 2.9 4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6H6zm7 1.5L18.5 9H13V3.5zM8 11h8v2H8v-2zm0 4h8v2H8v-2z"/>
+</svg>
+{% elif content_type == 'article' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+</svg>
+{% elif content_type == 'framework' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M22 11V3h-8v2H4V3H2v18h2v-6h10v6h8v-8l-4-4 4-4zM4 7h10v4H4V7zm16 10h-4v-4h.76L20 16.24V17zm0-5.76L18.24 13H16V9h4v2.24z"/>
+</svg>
+{% elif content_type == 'value' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+</svg>
+{% elif content_type == 'preference' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+</svg>
+{% elif content_type == 'memory' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15.82 7.22l-1.06 1.06a4.001 4.001 0 010 5.66l1.06 1.06a5.5 5.5 0 000-7.78zm2.12-2.12l-1.06 1.06c2.62 2.62 2.62 6.88 0 9.5l1.06 1.06c3.37-3.37 3.37-8.84 0-12.2v.58zM9.18 16.78l1.06-1.06a4.001 4.001 0 010-5.66L9.18 8.94a5.5 5.5 0 000 7.78v.06zm-2.12 2.12l1.06-1.06c-2.62-2.62-2.62-6.88 0-9.5L7.06 7.28c-3.37 3.37-3.37 8.84 0 12.2v-.58zM12 12a2 2 0 100-4 2 2 0 000 4z"/>
+</svg>
+{% elif content_type == 'insight' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6A4.997 4.997 0 017 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/>
+</svg>
+{% elif content_type == 'goal' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+</svg>
+{% elif content_type == 'skill' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>
+</svg>
+{% elif content_type == 'web_content' %}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+</svg>
+{% else %}
+{# Default placeholder #}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+</svg>
+{% endif %}
+{% endmacro %}
+
+{#
+  Render a stat box for the home page.
+
+  Args:
+    value: The numeric value to display
+    label: The label for the stat
+#}
+{% macro stat(value, label) %}
+<div class="stat">
+    <span class="stat-value">{{ value }}</span>
+    <span class="stat-label">{{ label }}</span>
+</div>
+{% endmacro %}
