@@ -568,3 +568,439 @@ class TestLongContentTruncation:
 
         # Full title should appear on detail page
         assert long_title in content
+
+
+class TestSpecialCharacterEscaping:
+    """Tests for special character escaping (Task 177).
+
+    When content contains special HTML characters, the library should:
+    - Escape < > & " ' characters in HTML output
+    - Prevent XSS by escaping script tags and JavaScript
+    - Use Jinja2 autoescape for titles, summaries, theme names
+    - Handle Unicode characters correctly
+    """
+
+    def test_jinja2_autoescape_is_enabled(self, temp_dir):
+        """Verify that Jinja2 autoescape is enabled for HTML templates."""
+        from src.library.static_generator import StaticGenerator
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Check that autoescape is enabled in the environment
+        assert generator.env.autoescape is True or callable(generator.env.autoescape)
+
+    def test_html_tags_escaped_in_title(self, temp_dir):
+        """HTML tags in titles should be escaped, not rendered as HTML."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with HTML in title
+        malicious_title = "<script>alert('XSS')</script>Title"
+        item = LibraryItem(
+            id="xss-item",
+            content_type=ContentType.BOOK,
+            title=malicious_title,
+            summary="Normal summary",
+            full_content="Normal content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_all_page(items=[item])
+
+        content = (output_dir / "all" / "index.html").read_text()
+
+        # HTML should be escaped (< becomes &lt;, > becomes &gt;)
+        assert "<script>" not in content
+        assert "&lt;script&gt;" in content
+
+    def test_html_tags_escaped_in_summary(self, temp_dir):
+        """HTML tags in summaries should be escaped."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with HTML in summary
+        malicious_summary = "Summary with <img src=x onerror=alert('XSS')> image"
+        item = LibraryItem(
+            id="xss-summary-item",
+            content_type=ContentType.ARTICLE,
+            title="Normal Title",
+            summary=malicious_summary,
+            full_content="Normal content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_all_page(items=[item])
+
+        content = (output_dir / "all" / "index.html").read_text()
+
+        # HTML should be escaped
+        assert "<img src=x" not in content
+        assert "&lt;img" in content
+
+    def test_ampersand_escaped_in_content(self, temp_dir):
+        """Ampersands (&) should be escaped as &amp; in HTML."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with ampersand in title
+        title_with_ampersand = "AT&T Corporation & Others"
+        item = LibraryItem(
+            id="ampersand-item",
+            content_type=ContentType.ARTICLE,
+            title=title_with_ampersand,
+            summary="Summary",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_all_page(items=[item])
+
+        content = (output_dir / "all" / "index.html").read_text()
+
+        # Ampersands should be escaped
+        assert "&amp;" in content
+
+    def test_quotes_escaped_in_attributes(self, temp_dir):
+        """Quotes in content should be properly escaped when used in attributes."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with quotes in title (used in img alt attribute)
+        title_with_quotes = 'Book "Title" with \'quotes\''
+        item = LibraryItem(
+            id="quotes-item",
+            content_type=ContentType.BOOK,
+            title=title_with_quotes,
+            summary="Summary",
+            full_content="Content",
+            source_url=None,
+            cover_image_url="http://example.com/image.jpg",
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "quotes-item" / "index.html").read_text()
+
+        # The raw quotes should not break HTML attributes
+        # Check that the page is valid (contains the escaped title in a heading)
+        assert "Book" in content
+        assert "Title" in content
+        # Should not have broken HTML
+        assert 'alt=""Title"' not in content
+
+    def test_less_than_greater_than_escaped(self, temp_dir):
+        """Less than (<) and greater than (>) should be escaped."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with comparison operators
+        title_with_symbols = "Values where x < 10 and y > 5"
+        item = LibraryItem(
+            id="symbols-item",
+            content_type=ContentType.FRAMEWORK,
+            title=title_with_symbols,
+            summary="Math content: a < b > c",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_all_page(items=[item])
+
+        content = (output_dir / "all" / "index.html").read_text()
+
+        # < and > should be escaped
+        assert "&lt;" in content  # < escaped
+        assert "&gt;" in content  # > escaped
+
+    def test_unicode_characters_preserved(self, temp_dir):
+        """Unicode characters should be preserved correctly."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with Unicode characters
+        unicode_title = "日本語タイトル with emoji 🚀 and accents éàü"
+        item = LibraryItem(
+            id="unicode-item",
+            content_type=ContentType.ARTICLE,
+            title=unicode_title,
+            summary="Summary with émojis 🎉 and ñ",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_all_page(items=[item])
+
+        content = (output_dir / "all" / "index.html").read_text()
+
+        # Unicode should be preserved
+        assert "日本語タイトル" in content
+        assert "🚀" in content
+        assert "éàü" in content
+
+    def test_theme_names_escaped(self, temp_dir):
+        """Theme names with special characters should be escaped."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType, Theme
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create theme with special characters
+        theme = Theme(
+            id="special-theme",
+            name="Theme with <script>alert('XSS')</script>",
+            description="Description with & symbols",
+            keywords=["test"],
+            item_count=1,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_home_page(themes=[theme], items=[])
+
+        content = (output_dir / "index.html").read_text()
+
+        # HTML in theme name should be escaped
+        assert "<script>" not in content
+        assert "&lt;script&gt;" in content
+
+    def test_highlight_text_escaped(self, temp_dir):
+        """Highlight/excerpt text should be escaped."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with special characters in highlights
+        item = LibraryItem(
+            id="highlight-item",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="Summary",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[
+                "Highlight with <em>tags</em>",
+                "Highlight with & ampersand",
+            ],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "highlight-item" / "index.html").read_text()
+
+        # HTML in highlights should be escaped
+        assert "<em>" not in content
+        assert "&lt;em&gt;" in content
+        assert "&amp;" in content
+
+    def test_source_url_not_escaped_improperly(self, temp_dir):
+        """Source URLs should preserve query parameters correctly."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with URL containing query parameters
+        url_with_params = "https://example.com/page?foo=1&bar=2"
+        item = LibraryItem(
+            id="url-item",
+            content_type=ContentType.WEB_CONTENT,
+            title="Web Page",
+            summary="Summary",
+            full_content="Content",
+            source_url=url_with_params,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "url-item" / "index.html").read_text()
+
+        # URL should be present and properly escaped in href
+        # The & in URLs is typically escaped as &amp; in HTML attributes
+        assert "https://example.com/page" in content
+        # Either the raw URL or properly escaped version should work
+        assert "foo=1" in content and "bar=2" in content
+
+    def test_newlines_in_content_handled(self, temp_dir):
+        """Newlines in content should not break HTML structure."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with newlines
+        content_with_newlines = "Line 1\nLine 2\nLine 3"
+        item = LibraryItem(
+            id="newline-item",
+            content_type=ContentType.ARTICLE,
+            title="Multi-line Title\nWith Newline",
+            summary=content_with_newlines,
+            full_content=content_with_newlines,
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_all_page(items=[item])
+
+        content = (output_dir / "all" / "index.html").read_text()
+
+        # Content should still be present (newlines are allowed in HTML)
+        assert "Line 1" in content
+        assert "Line 2" in content
+
+    def test_script_injection_prevented_in_card_title(self, temp_dir):
+        """Script injection via card titles should be prevented."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Various XSS attack vectors
+        xss_payloads = [
+            "<script>alert(1)</script>",
+            '<img src="x" onerror="alert(1)">',
+            "javascript:alert(1)",
+            '<svg onload="alert(1)">',
+            "<<script>script>alert(1)<</script>/script>",
+        ]
+
+        items = []
+        for i, payload in enumerate(xss_payloads):
+            items.append(
+                LibraryItem(
+                    id=f"xss-{i}",
+                    content_type=ContentType.ARTICLE,
+                    title=payload,
+                    summary="Safe summary",
+                    full_content="Safe content",
+                    source_url=None,
+                    cover_image_url=None,
+                    metadata={},
+                    themes=[],
+                    created_at=datetime.now(),
+                    highlights=[],
+                )
+            )
+
+        generator._ensure_output_dirs()
+        generator.generate_all_page(items=items)
+
+        content = (output_dir / "all" / "index.html").read_text()
+
+        # None of the dangerous strings should appear unescaped
+        assert "<script>" not in content
+        assert 'onerror="' not in content
+        assert 'onload="' not in content
+        # The escaped versions should be present
+        assert "&lt;script&gt;" in content
+
+    def test_metadata_values_escaped(self, temp_dir):
+        """Metadata values displayed in templates should be escaped."""
+        from src.library.static_generator import StaticGenerator
+        from src.library.models import LibraryItem, ContentType
+
+        output_dir = temp_dir / "library-site"
+        generator = StaticGenerator(output_dir=output_dir)
+
+        # Create item with special characters in metadata
+        item = LibraryItem(
+            id="metadata-item",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="Summary",
+            full_content="Content",
+            source_url=None,
+            cover_image_url=None,
+            metadata={
+                "author": "Author <script>alert('XSS')</script>",
+                "isbn": "123-456-789",
+            },
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[],
+        )
+
+        generator._ensure_output_dirs()
+        generator.generate_item_pages(items=[item], themes={})
+
+        content = (output_dir / "item" / "metadata-item" / "index.html").read_text()
+
+        # Author value should be escaped
+        assert "<script>" not in content
+        assert "&lt;script&gt;" in content

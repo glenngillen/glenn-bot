@@ -306,7 +306,7 @@ data/library-site/         # Generated site
 - [x] 174. Implement "No content yet" message in templates
 - [x] 175. Write tests for long content truncation
 - [x] 176. Implement CSS truncation with ellipsis
-- [ ] 177. Write tests for special character escaping
+- [x] 177. Write tests for special character escaping
 - [ ] 178. Verify Jinja2 autoescape is enabled
 - [ ] 179. Write tests for items without source_url
 - [ ] 180. Implement conditional source link in item.html
