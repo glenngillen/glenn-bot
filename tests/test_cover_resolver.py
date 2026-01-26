@@ -284,3 +284,209 @@ class TestSaveCache:
 
         assert "new_item" in data
         assert "old_item" not in data
+
+
+class TestFetchCoverByIsbn:
+    """Tests for _fetch_cover_by_isbn() method that calls Open Library API by ISBN."""
+
+    def test_fetch_cover_by_isbn_constructs_correct_url(self, temp_dir):
+        """_fetch_cover_by_isbn() should construct the correct Open Library URL."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        # Mock the requests.head call
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            resolver._fetch_cover_by_isbn("9780134685991")
+
+            # Verify the URL construction
+            expected_url = "https://covers.openlibrary.org/b/isbn/9780134685991-L.jpg"
+            mock_head.assert_called_once()
+            actual_url = mock_head.call_args[0][0]
+            assert actual_url == expected_url
+
+    def test_fetch_cover_by_isbn_returns_url_on_success(self, temp_dir):
+        """_fetch_cover_by_isbn() should return the cover URL when image exists."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_isbn("9780134685991")
+
+            expected_url = "https://covers.openlibrary.org/b/isbn/9780134685991-L.jpg"
+            assert result == expected_url
+
+    def test_fetch_cover_by_isbn_returns_none_on_404(self, temp_dir):
+        """_fetch_cover_by_isbn() should return None when image not found (404)."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 404
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_isbn("0000000000")
+
+            assert result is None
+
+    def test_fetch_cover_by_isbn_returns_none_on_non_image_content_type(self, temp_dir):
+        """_fetch_cover_by_isbn() should return None when response is not an image."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            # Open Library returns a 1x1 pixel GIF for missing covers
+            # We should detect non-image or very small images
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "text/html"}
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_isbn("0000000000")
+
+            assert result is None
+
+    def test_fetch_cover_by_isbn_handles_request_exception(self, temp_dir):
+        """_fetch_cover_by_isbn() should return None on network errors."""
+        from src.library.cover_resolver import CoverResolver
+        import requests
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_head.side_effect = requests.RequestException("Connection error")
+
+            result = resolver._fetch_cover_by_isbn("9780134685991")
+
+            assert result is None
+
+    def test_fetch_cover_by_isbn_handles_timeout(self, temp_dir):
+        """_fetch_cover_by_isbn() should return None on request timeout."""
+        from src.library.cover_resolver import CoverResolver
+        import requests
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_head.side_effect = requests.Timeout("Request timed out")
+
+            result = resolver._fetch_cover_by_isbn("9780134685991")
+
+            assert result is None
+
+    def test_fetch_cover_by_isbn_strips_hyphens_from_isbn(self, temp_dir):
+        """_fetch_cover_by_isbn() should handle ISBN with hyphens."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            resolver._fetch_cover_by_isbn("978-0-13-468599-1")
+
+            # URL should have hyphens removed
+            actual_url = mock_head.call_args[0][0]
+            assert "978-0-13-468599-1" not in actual_url
+            assert "9780134685991" in actual_url
+
+    def test_fetch_cover_by_isbn_uses_timeout(self, temp_dir):
+        """_fetch_cover_by_isbn() should use a reasonable timeout for the request."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            resolver._fetch_cover_by_isbn("9780134685991")
+
+            # Verify a timeout is specified
+            assert "timeout" in mock_head.call_args.kwargs
+            # Timeout should be reasonable (5-30 seconds)
+            timeout = mock_head.call_args.kwargs["timeout"]
+            assert 5 <= timeout <= 30
+
+    def test_fetch_cover_by_isbn_accepts_png_content_type(self, temp_dir):
+        """_fetch_cover_by_isbn() should accept PNG images as valid covers."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/png"}
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_isbn("9780134685991")
+
+            expected_url = "https://covers.openlibrary.org/b/isbn/9780134685991-L.jpg"
+            assert result == expected_url
+
+    def test_fetch_cover_by_isbn_accepts_gif_content_type(self, temp_dir):
+        """_fetch_cover_by_isbn() should accept GIF images as valid covers."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/gif"}
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_isbn("9780134685991")
+
+            expected_url = "https://covers.openlibrary.org/b/isbn/9780134685991-L.jpg"
+            assert result == expected_url
