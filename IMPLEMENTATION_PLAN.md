@@ -233,25 +233,25 @@ data/library-site/         # Generated site
 
 - [x] 114. Create test file `tests/test_static_generator.py`
 - [x] 115. Write tests for StaticGenerator initialization
-- [ ] 116. Implement StaticGenerator class in `src/library/static_generator.py`
+- [x] 116. Implement StaticGenerator class in `src/library/static_generator.py`
 - [x] 117. Write tests for _setup_jinja_env() loading templates
-- [ ] 118. Implement _setup_jinja_env() method
+- [x] 118. Implement _setup_jinja_env() method
 - [x] 119. Write tests for _ensure_output_dirs() creating structure
-- [ ] 120. Implement _ensure_output_dirs() method
+- [x] 120. Implement _ensure_output_dirs() method
 - [x] 121. Write tests for generate_home_page() rendering index.html
-- [ ] 122. Implement generate_home_page() method
+- [x] 122. Implement generate_home_page() method
 - [x] 123. Write tests for generate_theme_pages() creating theme/{id}/index.html
-- [ ] 124. Implement generate_theme_pages() method
+- [x] 124. Implement generate_theme_pages() method
 - [x] 125. Write tests for generate_item_pages() creating item/{id}/index.html
-- [ ] 126. Implement generate_item_pages() method
+- [x] 126. Implement generate_item_pages() method
 - [x] 127. Write tests for generate_all_page() rendering all/index.html
-- [ ] 128. Implement generate_all_page() method
+- [x] 128. Implement generate_all_page() method
 - [x] 129. Write tests for generate_search_page() rendering search/index.html
-- [ ] 130. Implement generate_search_page() method
+- [x] 130. Implement generate_search_page() method
 - [x] 131. Write tests for copy_assets() copying CSS, JS, images
-- [ ] 132. Implement copy_assets() method
+- [x] 132. Implement copy_assets() method
 - [x] 133. Write tests for generate_all() orchestrating full generation
-- [ ] 134. Implement generate_all() method
+- [x] 134. Implement generate_all() method
 
 ### Phase 10: Build Process & Caching (17 tasks)
 
