@@ -497,3 +497,67 @@ Important:
         self.save_assignments()
 
         return assignments
+
+    def update_assignments(
+        self, items: list[LibraryItem]
+    ) -> list[ThemeAssignment]:
+        """Update theme assignments for new items only (incremental update).
+
+        Identifies items that don't have existing assignments and assigns only
+        those to themes. Existing assignments are preserved. This is more
+        efficient than assign_items_to_themes() when adding new content to
+        an existing library.
+
+        The process:
+        1. Identify items without existing assignments
+        2. If no new items, return empty list without calling LLM
+        3. Call LLM to assign only new items to themes
+        4. Combine new assignments with existing ones
+        5. Save all assignments to disk
+
+        Args:
+            items: List of LibraryItem objects (both existing and new).
+
+        Returns:
+            List of ThemeAssignment objects for newly assigned items only.
+            Returns empty list if:
+            - No items are provided
+            - No themes exist (self.themes is empty)
+            - All items already have assignments
+        """
+        # Return empty list for edge cases
+        if not items:
+            return []
+        if not self.themes:
+            return []
+
+        # Find items that don't have existing assignments
+        assigned_item_ids = {a.item_id for a in self.assignments}
+        new_items = [item for item in items if item.id not in assigned_item_ids]
+
+        # If all items already have assignments, return empty list
+        if not new_items:
+            return []
+
+        # Build the prompt for only the new items
+        prompt = self._build_assignment_prompt(new_items, self.themes)
+
+        # Call OllamaClient to generate assignments
+        system_prompt = (
+            "You are a knowledge organization expert. Assign content items to "
+            "thematic categories with appropriate confidence scores. "
+            "Always respond with valid JSON arrays only."
+        )
+        response = self.ollama_client.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+        )
+
+        # Parse the response into ThemeAssignment objects
+        new_assignments = self._parse_assignments_from_response(response)
+
+        # Combine existing assignments with new assignments
+        self.assignments = list(self.assignments) + new_assignments
+        self.save_assignments()
+
+        return new_assignments
