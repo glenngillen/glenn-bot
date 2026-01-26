@@ -6,10 +6,27 @@ documents into LibraryItem instances suitable for display in the static
 website library.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
+from src.library.models import ContentType
 
 if TYPE_CHECKING:
     from src.knowledge_base import KnowledgeBase
+
+
+# Mapping from ChromaDB type strings to ContentType enum values
+_TYPE_MAPPING: dict[str, ContentType] = {
+    "value": ContentType.VALUE,
+    "framework": ContentType.FRAMEWORK,
+    "web": ContentType.WEB_CONTENT,
+    "preference": ContentType.PREFERENCE,
+    "memory": ContentType.MEMORY,
+    "book": ContentType.BOOK,
+    "article": ContentType.ARTICLE,
+    "insight": ContentType.INSIGHT,
+    "goal": ContentType.GOAL,
+    "skill": ContentType.SKILL,
+}
 
 
 class ContentExporter:
@@ -27,3 +44,19 @@ class ContentExporter:
             knowledge_base: The KnowledgeBase instance to export content from.
         """
         self.knowledge_base = knowledge_base
+
+    def _infer_content_type(self, type_string: Optional[str]) -> ContentType:
+        """Infer the ContentType from a ChromaDB type string.
+
+        Args:
+            type_string: The type string from ChromaDB metadata, or None.
+
+        Returns:
+            The corresponding ContentType enum value. Returns WEB_CONTENT
+            for unknown types, None, or empty strings.
+        """
+        if not type_string:
+            return ContentType.WEB_CONTENT
+
+        normalized = type_string.lower()
+        return _TYPE_MAPPING.get(normalized, ContentType.WEB_CONTENT)
