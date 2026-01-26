@@ -183,7 +183,7 @@ data/library-site/         # Generated site
 - [x] 78. Write tests for resolve_cover() orchestration (cache -> API -> placeholder)
 - [x] 79. Implement resolve_cover() with fallback chain
 - [x] 80. Write tests for resolve_all_covers() batch processing
-- [ ] 81. Implement resolve_all_covers() method
+- [x] 81. Implement resolve_all_covers() method
 - [ ] 82. Write tests for API error handling with exponential backoff
 - [ ] 83. Implement exponential backoff and graceful degradation
 

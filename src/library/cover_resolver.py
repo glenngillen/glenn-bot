@@ -271,17 +271,19 @@ class CoverResolver:
         # Return the path relative to placeholders directory
         return f"assets/images/placeholders/{filename}"
 
-    def resolve_cover(self, item: LibraryItem) -> str:
+    def resolve_cover(self, item: LibraryItem, _save: bool = True) -> str:
         """Resolve the cover image URL for a library item.
 
         Implements the full resolution flow:
         1. Check cache - if item is cached, return the cached URL
         2. For books: try ISBN lookup (if ISBN available) -> title lookup -> Google Books
         3. For non-books: use placeholder directly
-        4. Cache the result and save to disk
+        4. Cache the result and save to disk (unless _save=False)
 
         Args:
             item: The LibraryItem to resolve a cover for.
+            _save: If True (default), save cache to disk after resolving.
+                Set to False for batch processing to avoid redundant saves.
 
         Returns:
             The resolved cover image URL. For books, this may be an Open Library
@@ -330,7 +332,58 @@ class CoverResolver:
             "source": source,
         }
 
-        # Step 5: Save cache to disk
-        self._save_cache()
+        # Step 5: Save cache to disk (if requested)
+        if _save:
+            self._save_cache()
 
         return cover_url
+
+    def resolve_all_covers(self, items: list[LibraryItem]) -> list[LibraryItem]:
+        """Resolve cover images for a list of library items.
+
+        Processes each item in the list and resolves its cover image URL.
+        Items are not modified in place; new LibraryItem instances are returned
+        with the cover_image_url field populated.
+
+        This method is optimized for batch processing:
+        - Uses cached values when available
+        - Continues processing if an individual item fails
+        - Saves the cache once at the end, not after each item
+
+        Args:
+            items: A list of LibraryItem instances to resolve covers for.
+
+        Returns:
+            A list of new LibraryItem instances with cover_image_url populated.
+            The order of items is preserved.
+        """
+        if not items:
+            return []
+
+        result: list[LibraryItem] = []
+
+        for item in items:
+            # Resolve the cover URL for this item
+            # Pass _save=False to avoid saving cache after each item
+            cover_url = self.resolve_cover(item, _save=False)
+
+            # Create a new LibraryItem with the cover_image_url set
+            new_item = LibraryItem(
+                id=item.id,
+                content_type=item.content_type,
+                title=item.title,
+                summary=item.summary,
+                full_content=item.full_content,
+                source_url=item.source_url,
+                cover_image_url=cover_url,
+                metadata=item.metadata,
+                themes=item.themes,
+                created_at=item.created_at,
+                highlights=item.highlights,
+            )
+            result.append(new_item)
+
+        # Save cache once at the end
+        self._save_cache()
+
+        return result
