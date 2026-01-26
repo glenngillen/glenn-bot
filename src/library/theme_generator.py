@@ -10,9 +10,9 @@ is added to the knowledge base.
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Union
 
-from src.library.models import Theme, ThemeAssignment
+from src.library.models import LibraryItem, Theme, ThemeAssignment
 
 if TYPE_CHECKING:
     from src.ollama_client import OllamaClient
@@ -121,3 +121,59 @@ class ThemeGenerator:
 
         self.assignments = [ThemeAssignment.from_dict(data) for data in assignments_data]
         return self.assignments
+
+    def _build_theme_generation_prompt(self, items: list[LibraryItem]) -> str:
+        """Build the prompt for LLM theme generation.
+
+        Constructs a prompt that asks the LLM to analyze the provided content
+        and generate 5-10 broad thematic categories with id, name, description,
+        and keywords for each theme.
+
+        Args:
+            items: List of LibraryItem objects to analyze for theme generation.
+
+        Returns:
+            A string prompt for the LLM to generate themes in JSON format.
+        """
+        # Build the content summary section
+        if not items:
+            content_section = "No content items available for analysis."
+        else:
+            content_lines = []
+            for item in items:
+                content_type = item.content_type.value
+                content_lines.append(
+                    f"- [{content_type}] {item.title}: {item.summary}"
+                )
+            content_section = "\n".join(content_lines)
+
+        prompt = f"""Analyze the following knowledge base content and identify 5 to 10 broad thematic categories that group related items together.
+
+Content to analyze:
+{content_section}
+
+For each theme, provide:
+- id: A URL-friendly slug (lowercase, hyphens instead of spaces, e.g., "personal-growth")
+- name: A human-readable name for the theme
+- description: A brief description of what this theme encompasses
+- keywords: A list of representative keywords for this theme
+
+Return your response as a JSON array of theme objects. Example format:
+```json
+[
+  {{
+    "id": "personal-growth",
+    "name": "Personal Growth",
+    "description": "Self-improvement, habits, and learning strategies",
+    "keywords": ["growth", "habits", "learning", "self-improvement"]
+  }}
+]
+```
+
+Important:
+- Create between 5 and 10 themes based on the content diversity
+- Themes should be broad enough to group multiple items
+- Each theme should have 3-6 relevant keywords
+- Return only the JSON array, no additional text"""
+
+        return prompt

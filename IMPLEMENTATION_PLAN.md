@@ -145,7 +145,7 @@ data/library-site/         # Generated site
 - [x] 43. Write tests for load_assignments() reading from assignments.json
 - [x] 44. Implement load_assignments() method
 - [x] 45. Write tests for _build_theme_generation_prompt() constructing LLM prompt
-- [ ] 46. Implement _build_theme_generation_prompt() method
+- [x] 46. Implement _build_theme_generation_prompt() method
 - [ ] 47. Write tests for _parse_themes_from_response() parsing JSON into Theme objects
 - [ ] 48. Implement _parse_themes_from_response() method
 - [ ] 49. Write tests for generate_themes() orchestration (LLM call, parse, save)
