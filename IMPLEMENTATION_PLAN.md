@@ -135,7 +135,7 @@ data/library-site/         # Generated site
 
 - [x] 34. Create test file `tests/test_theme_generator.py`
 - [x] 35. Write tests for ThemeGenerator initialization with OllamaClient and data_dir
-- [ ] 36. Implement ThemeGenerator class skeleton in `src/library/theme_generator.py`
+- [x] 36. Implement ThemeGenerator class skeleton in `src/library/theme_generator.py`
 - [ ] 37. Write tests for save_themes() persisting to themes.json
 - [ ] 38. Implement save_themes() method
 - [ ] 39. Write tests for load_themes() reading from themes.json
