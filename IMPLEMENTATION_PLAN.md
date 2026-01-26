@@ -106,7 +106,7 @@ data/library-site/         # Generated site
 - [x] 10. Implement LibraryItem dataclass with all fields
 - [x] 11. Write tests for LibraryItem.to_dict() and LibraryItem.from_dict() serialization
 - [x] 12. Implement LibraryItem serialization methods
-- [ ] 13. Write tests for Theme dataclass (id, name, description, keywords, item_count, created_at, updated_at)
+- [x] 13. Write tests for Theme dataclass (id, name, description, keywords, item_count, created_at, updated_at)
 - [ ] 14. Implement Theme dataclass in `src/library/models.py`
 - [ ] 15. Write tests for Theme.to_dict() and Theme.from_dict() serialization
 - [ ] 16. Implement Theme serialization methods
