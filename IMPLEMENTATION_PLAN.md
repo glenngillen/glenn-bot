@@ -298,7 +298,7 @@ data/library-site/         # Generated site
 - [x] 169. Write tests for /library-status command
 - [x] 170. Implement _show_library_status() method
 - [x] 171. Add /library-status to handle_command()
-- [ ] 172. Update display_help() in src/terminal_ui.py with library commands section
+- [x] 172. Update display_help() in src/terminal_ui.py with library commands section
 
 ### Phase 13: Edge Cases & Polish (14 tasks)
 
