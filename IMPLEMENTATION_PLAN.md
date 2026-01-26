@@ -307,7 +307,7 @@ data/library-site/         # Generated site
 - [x] 175. Write tests for long content truncation
 - [x] 176. Implement CSS truncation with ellipsis
 - [x] 177. Write tests for special character escaping
-- [ ] 178. Verify Jinja2 autoescape is enabled
+- [x] 178. Verify Jinja2 autoescape is enabled
 - [ ] 179. Write tests for items without source_url
 - [ ] 180. Implement conditional source link in item.html
 - [ ] 181. Write tests for items without highlights
