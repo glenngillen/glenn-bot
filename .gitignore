@@ -38,5 +38,4 @@ logs/
 
 # Temporary files
 *.tmp
-*.temp.worktrees/*
-.worktrees
+*.temp
