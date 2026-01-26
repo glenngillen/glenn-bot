@@ -513,3 +513,270 @@ class TestGenerateSummary:
         assert len(result) == 203  # 200 + "..."
         assert result.endswith("...")
         assert result[:200] == content[:200]
+
+
+class TestExtractHighlights:
+    """Tests for _extract_highlights() extracting key_points from values and steps from frameworks."""
+
+    def test_extract_highlights_returns_key_points_for_values(self, mock_knowledge_base):
+        """Values with key_points metadata should return those as highlights."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {
+            "type": "value",
+            "key_points": [
+                "Appreciate the care others put into their work",
+                "Be curious and ask questions without assumption",
+                "Believe in magic and keep dreaming",
+            ],
+        }
+
+        result = exporter._extract_highlights(metadata, ContentType.VALUE)
+
+        assert result == [
+            "Appreciate the care others put into their work",
+            "Be curious and ask questions without assumption",
+            "Believe in magic and keep dreaming",
+        ]
+
+    def test_extract_highlights_returns_steps_for_frameworks(self, mock_knowledge_base):
+        """Frameworks with steps metadata should return those as highlights."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {
+            "type": "framework",
+            "steps": [
+                "Define the problem clearly",
+                "Gather relevant information",
+                "Generate potential solutions",
+            ],
+        }
+
+        result = exporter._extract_highlights(metadata, ContentType.FRAMEWORK)
+
+        assert result == [
+            "Define the problem clearly",
+            "Gather relevant information",
+            "Generate potential solutions",
+        ]
+
+    def test_extract_highlights_returns_empty_for_value_without_key_points(
+        self, mock_knowledge_base
+    ):
+        """Values without key_points should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "value", "name": "Some Value"}
+
+        result = exporter._extract_highlights(metadata, ContentType.VALUE)
+
+        assert result == []
+
+    def test_extract_highlights_returns_empty_for_framework_without_steps(
+        self, mock_knowledge_base
+    ):
+        """Frameworks without steps should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "framework", "name": "Some Framework"}
+
+        result = exporter._extract_highlights(metadata, ContentType.FRAMEWORK)
+
+        assert result == []
+
+    def test_extract_highlights_returns_empty_for_other_content_types(
+        self, mock_knowledge_base
+    ):
+        """Other content types should return empty list (no highlight extraction)."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "memory", "content": "Some memory content"}
+
+        result = exporter._extract_highlights(metadata, ContentType.MEMORY)
+
+        assert result == []
+
+    def test_extract_highlights_handles_none_metadata(self, mock_knowledge_base):
+        """None metadata should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+
+        result = exporter._extract_highlights(None, ContentType.VALUE)
+
+        assert result == []
+
+    def test_extract_highlights_handles_empty_metadata(self, mock_knowledge_base):
+        """Empty metadata dict should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+
+        result = exporter._extract_highlights({}, ContentType.FRAMEWORK)
+
+        assert result == []
+
+    def test_extract_highlights_handles_non_list_key_points(self, mock_knowledge_base):
+        """Non-list key_points should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "value", "key_points": "This is a string, not a list"}
+
+        result = exporter._extract_highlights(metadata, ContentType.VALUE)
+
+        assert result == []
+
+    def test_extract_highlights_handles_non_list_steps(self, mock_knowledge_base):
+        """Non-list steps should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "framework", "steps": "Single step as string"}
+
+        result = exporter._extract_highlights(metadata, ContentType.FRAMEWORK)
+
+        assert result == []
+
+    def test_extract_highlights_handles_empty_key_points_list(self, mock_knowledge_base):
+        """Empty key_points list should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "value", "key_points": []}
+
+        result = exporter._extract_highlights(metadata, ContentType.VALUE)
+
+        assert result == []
+
+    def test_extract_highlights_handles_empty_steps_list(self, mock_knowledge_base):
+        """Empty steps list should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "framework", "steps": []}
+
+        result = exporter._extract_highlights(metadata, ContentType.FRAMEWORK)
+
+        assert result == []
+
+    def test_extract_highlights_for_insight_returns_key_points(self, mock_knowledge_base):
+        """Insights with key_points should return them as highlights (same as values)."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {
+            "type": "insight",
+            "key_points": ["First insight", "Second insight"],
+        }
+
+        result = exporter._extract_highlights(metadata, ContentType.INSIGHT)
+
+        assert result == ["First insight", "Second insight"]
+
+    def test_extract_highlights_for_book_returns_empty(self, mock_knowledge_base):
+        """Books should return empty list (highlights come from elsewhere)."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "book", "title": "Some Book"}
+
+        result = exporter._extract_highlights(metadata, ContentType.BOOK)
+
+        assert result == []
+
+    def test_extract_highlights_for_web_content_returns_empty(self, mock_knowledge_base):
+        """Web content should return empty list."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {"type": "web", "source": "https://example.com"}
+
+        result = exporter._extract_highlights(metadata, ContentType.WEB_CONTENT)
+
+        assert result == []
+
+    def test_extract_highlights_preserves_order_of_key_points(self, mock_knowledge_base):
+        """Key points should be returned in the same order as in metadata."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {
+            "key_points": ["First", "Second", "Third", "Fourth"],
+        }
+
+        result = exporter._extract_highlights(metadata, ContentType.VALUE)
+
+        assert result == ["First", "Second", "Third", "Fourth"]
+
+    def test_extract_highlights_preserves_order_of_steps(self, mock_knowledge_base):
+        """Steps should be returned in the same order as in metadata."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {
+            "steps": ["Step 1", "Step 2", "Step 3", "Step 4"],
+        }
+
+        result = exporter._extract_highlights(metadata, ContentType.FRAMEWORK)
+
+        assert result == ["Step 1", "Step 2", "Step 3", "Step 4"]
+
+    def test_extract_highlights_filters_non_string_items_in_key_points(
+        self, mock_knowledge_base
+    ):
+        """Non-string items in key_points should be converted to strings."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {
+            "key_points": ["Valid string", 123, None, "Another string"],
+        }
+
+        result = exporter._extract_highlights(metadata, ContentType.VALUE)
+
+        # Should convert non-strings to strings or filter them
+        assert len(result) == 4
+        assert "Valid string" in result
+        assert "Another string" in result
+
+    def test_extract_highlights_filters_non_string_items_in_steps(
+        self, mock_knowledge_base
+    ):
+        """Non-string items in steps should be converted to strings."""
+        from src.library.content_exporter import ContentExporter
+        from src.library.models import ContentType
+
+        exporter = ContentExporter(mock_knowledge_base)
+        metadata = {
+            "steps": ["Step one", 42, None, "Step two"],
+        }
+
+        result = exporter._extract_highlights(metadata, ContentType.FRAMEWORK)
+
+        # Should convert non-strings to strings or filter them
+        assert len(result) == 4
+        assert "Step one" in result
+        assert "Step two" in result
