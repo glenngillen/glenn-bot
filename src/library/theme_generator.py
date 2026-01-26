@@ -673,6 +673,79 @@ Important:
 
         return new_assignments
 
+    def ensure_minimum_themes(self, minimum: int = 3) -> list[Theme]:
+        """Ensure at least the minimum number of themes exist.
+
+        If the current number of themes is less than the minimum, this method
+        adds default themes to reach the minimum count. This is useful for
+        small knowledge bases where the LLM might not generate enough themes.
+
+        The default themes added are:
+        - "General" - General content and resources
+        - "Reference" - Reference materials and documentation
+        - "Ideas" - Ideas, thoughts, and notes
+
+        These provide broad categories that can accommodate any content type.
+
+        Args:
+            minimum: The minimum number of themes required. Defaults to 3.
+
+        Returns:
+            The list of themes after ensuring the minimum count.
+        """
+        # Define default themes to use as fallbacks
+        default_themes_data = [
+            {
+                "id": "general",
+                "name": "General",
+                "description": "General content and resources",
+                "keywords": ["general", "content", "resources"],
+            },
+            {
+                "id": "reference",
+                "name": "Reference",
+                "description": "Reference materials and documentation",
+                "keywords": ["reference", "documentation", "materials"],
+            },
+            {
+                "id": "ideas",
+                "name": "Ideas",
+                "description": "Ideas, thoughts, and notes",
+                "keywords": ["ideas", "thoughts", "notes"],
+            },
+        ]
+
+        # Check if we need to add themes
+        if len(self.themes) >= minimum:
+            return self.themes
+
+        # Get existing theme IDs to avoid duplicates
+        existing_ids = {theme.id for theme in self.themes}
+
+        # Add default themes until we reach the minimum
+        now = datetime.now()
+        for theme_data in default_themes_data:
+            if len(self.themes) >= minimum:
+                break
+
+            # Skip if this theme ID already exists
+            if theme_data["id"] in existing_ids:
+                continue
+
+            theme = Theme(
+                id=theme_data["id"],
+                name=theme_data["name"],
+                description=theme_data["description"],
+                keywords=theme_data["keywords"],
+                item_count=0,
+                created_at=now,
+                updated_at=now,
+            )
+            self.themes.append(theme)
+            existing_ids.add(theme_data["id"])
+
+        return self.themes
+
     def get_items_for_theme(
         self, theme_id: str, items: list[LibraryItem]
     ) -> list[LibraryItem]:

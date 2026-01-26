@@ -257,6 +257,9 @@ class LibraryBuilder:
             # Use existing themes
             theme_generator.themes = existing_themes
 
+        # Ensure minimum number of themes for small libraries
+        theme_generator.ensure_minimum_themes()
+
         # Load existing assignments (unless forcing rebuild)
         if not force:
             theme_generator.load_assignments()
