@@ -70,3 +70,23 @@ class ThemeGenerator:
         themes_data = [theme.to_dict() for theme in self.themes]
         with open(self.themes_file, "w") as f:
             json.dump(themes_data, f, indent=2)
+
+    def load_themes(self) -> list[Theme]:
+        """Load themes from themes.json file in the data directory.
+
+        Reads the themes.json file and parses it into Theme objects.
+        Replaces any existing themes in self.themes with the loaded data.
+
+        Returns:
+            List of Theme objects loaded from the file. Returns empty list
+            if the file doesn't exist or is empty.
+        """
+        if not self.themes_file.exists():
+            self.themes = []
+            return self.themes
+
+        with open(self.themes_file) as f:
+            themes_data = json.load(f)
+
+        self.themes = [Theme.from_dict(data) for data in themes_data]
+        return self.themes

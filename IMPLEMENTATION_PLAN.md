@@ -139,7 +139,7 @@ data/library-site/         # Generated site
 - [x] 37. Write tests for save_themes() persisting to themes.json
 - [x] 38. Implement save_themes() method
 - [x] 39. Write tests for load_themes() reading from themes.json
-- [ ] 40. Implement load_themes() method
+- [x] 40. Implement load_themes() method
 - [ ] 41. Write tests for save_assignments() persisting to assignments.json
 - [ ] 42. Implement save_assignments() method
 - [ ] 43. Write tests for load_assignments() reading from assignments.json
