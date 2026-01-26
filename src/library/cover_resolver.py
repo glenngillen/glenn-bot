@@ -120,3 +120,54 @@ class CoverResolver:
 
         except (requests.RequestException, requests.Timeout):
             return None
+
+    def _fetch_cover_by_title(self, title: str) -> Optional[str]:
+        """Fetch a book cover URL from Open Library API by title.
+
+        Constructs the Open Library cover URL using the book title and verifies
+        the image exists by making a HEAD request to check the response status
+        and content type.
+
+        This is a fallback when ISBN lookup fails or is not available.
+
+        Args:
+            title: The book's title. Will be URL-encoded. Leading/trailing
+                whitespace will be stripped.
+
+        Returns:
+            The cover URL if a valid image exists, None otherwise.
+            Returns None for empty/whitespace-only titles, 404 responses,
+            non-image content types, or network errors.
+        """
+        # Handle empty or whitespace-only titles
+        if not title or not title.strip():
+            return None
+
+        # Strip leading/trailing whitespace and URL-encode the title
+        clean_title = title.strip()
+
+        # URL-encode special characters using urllib
+        from urllib.parse import quote
+
+        encoded_title = quote(clean_title, safe="")
+
+        # Construct the Open Library cover URL
+        url = f"https://covers.openlibrary.org/b/title/{encoded_title}-L.jpg"
+
+        try:
+            # Make a HEAD request to verify the image exists
+            response = requests.head(url, timeout=10)
+
+            # Check if the request was successful
+            if response.status_code != 200:
+                return None
+
+            # Verify the content type is an image
+            content_type = response.headers.get("content-type", "")
+            if not content_type.startswith("image/"):
+                return None
+
+            return url
+
+        except (requests.RequestException, requests.Timeout):
+            return None
