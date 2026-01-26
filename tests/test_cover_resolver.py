@@ -1331,3 +1331,550 @@ class TestGetPlaceholderUrl:
         for content_type in ContentType:
             result = resolver.get_placeholder_url(content_type)
             assert content_type.value in result.lower()
+
+
+class TestResolveCover:
+    """Tests for resolve_cover() method that orchestrates cache -> API -> placeholder fallback."""
+
+    def test_resolve_cover_returns_cached_url_if_exists(self, temp_dir):
+        """resolve_cover() should return cached URL without making API calls."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a LibraryItem for a book
+        item = LibraryItem(
+            id="item_123",
+            content_type=ContentType.BOOK,
+            title="Thinking in Systems",
+            summary="A primer on systems thinking",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "9781603580557"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+        # Pre-populate cache
+        resolver.cache["item_123"] = {
+            "url": "https://cached.example.com/cover.jpg",
+            "resolved_at": "2024-01-15T10:30:00",
+            "source": "open_library_isbn"
+        }
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            result = resolver.resolve_cover(item)
+
+            # Should not make any API calls
+            mock_head.assert_not_called()
+            assert result == "https://cached.example.com/cover.jpg"
+
+    def test_resolve_cover_for_book_with_isbn_tries_isbn_first(self, temp_dir):
+        """resolve_cover() should try ISBN lookup first for books with ISBN."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_456",
+            content_type=ContentType.BOOK,
+            title="Thinking in Systems",
+            summary="A primer on systems thinking",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "9781603580557"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            result = resolver.resolve_cover(item)
+
+            # Should call Open Library with ISBN
+            expected_url = "https://covers.openlibrary.org/b/isbn/9781603580557-L.jpg"
+            assert result == expected_url
+
+    def test_resolve_cover_for_book_falls_back_to_title_when_isbn_fails(self, temp_dir):
+        """resolve_cover() should try title lookup when ISBN lookup fails."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_789",
+            content_type=ContentType.BOOK,
+            title="Thinking in Systems",
+            summary="A primer on systems thinking",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "0000000000"},  # Invalid ISBN
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            # First call (ISBN) fails, second call (title) succeeds
+            mock_response_fail = Mock()
+            mock_response_fail.status_code = 404
+
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.headers = {"content-type": "image/jpeg"}
+
+            mock_head.side_effect = [mock_response_fail, mock_response_success]
+
+            result = resolver.resolve_cover(item)
+
+            # Should have made two calls: ISBN, then title
+            assert mock_head.call_count == 2
+            # Should return the title-based URL
+            assert "title" in result
+            assert "Thinking" in result
+
+    def test_resolve_cover_for_book_falls_back_to_google_books_when_open_library_fails(self, temp_dir):
+        """resolve_cover() should try Google Books when Open Library lookups fail."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_101",
+            content_type=ContentType.BOOK,
+            title="Some Obscure Book",
+            summary="A book not found on Open Library",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "1234567890"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("src.library.cover_resolver.requests.get") as mock_get:
+            # Both Open Library calls fail
+            mock_head_response = Mock()
+            mock_head_response.status_code = 404
+            mock_head.return_value = mock_head_response
+
+            # Google Books API succeeds
+            mock_get_response = Mock()
+            mock_get_response.status_code = 200
+            mock_get_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "thumbnail": "https://books.google.com/books/content?id=xyz123"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_get_response
+
+            result = resolver.resolve_cover(item)
+
+            # Should have tried Open Library (ISBN and title) then Google Books
+            assert mock_head.call_count == 2  # ISBN and title
+            assert mock_get.call_count == 1  # Google Books
+            assert result == "https://books.google.com/books/content?id=xyz123"
+
+    def test_resolve_cover_for_book_uses_placeholder_when_all_apis_fail(self, temp_dir):
+        """resolve_cover() should use placeholder when all API lookups fail for books."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_102",
+            content_type=ContentType.BOOK,
+            title="Completely Unknown Book",
+            summary="A book not found anywhere",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "0000000000"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("src.library.cover_resolver.requests.get") as mock_get:
+            # All APIs fail
+            mock_head_response = Mock()
+            mock_head_response.status_code = 404
+            mock_head.return_value = mock_head_response
+
+            mock_get_response = Mock()
+            mock_get_response.status_code = 200
+            mock_get_response.json.return_value = {"totalItems": 0}
+            mock_get.return_value = mock_get_response
+
+            result = resolver.resolve_cover(item)
+
+            # Should fall back to book placeholder
+            assert "book" in result.lower()
+            assert result.endswith(".svg")
+
+    def test_resolve_cover_for_non_book_uses_placeholder_directly(self, temp_dir):
+        """resolve_cover() should use placeholder for non-book content types without API calls."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_200",
+            content_type=ContentType.FRAMEWORK,
+            title="Decision Making Framework",
+            summary="A framework for making decisions",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("src.library.cover_resolver.requests.get") as mock_get:
+
+            result = resolver.resolve_cover(item)
+
+            # Should not make any API calls for non-books
+            mock_head.assert_not_called()
+            mock_get.assert_not_called()
+
+            # Should return framework placeholder
+            assert "framework" in result.lower()
+            assert result.endswith(".svg")
+
+    def test_resolve_cover_caches_result_after_api_lookup(self, temp_dir):
+        """resolve_cover() should cache the resolved URL after successful API lookup."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_300",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test book",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "9781234567890"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+        assert "item_300" not in resolver.cache
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            result = resolver.resolve_cover(item)
+
+            # Cache should be updated
+            assert "item_300" in resolver.cache
+            assert resolver.cache["item_300"]["url"] == result
+            assert "resolved_at" in resolver.cache["item_300"]
+            assert "source" in resolver.cache["item_300"]
+
+    def test_resolve_cover_caches_placeholder_for_non_books(self, temp_dir):
+        """resolve_cover() should cache the placeholder URL for non-book items."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_301",
+            content_type=ContentType.VALUE,
+            title="Core Value",
+            summary="An important value",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver.resolve_cover(item)
+
+        # Cache should be updated with placeholder
+        assert "item_301" in resolver.cache
+        assert resolver.cache["item_301"]["url"] == result
+        assert resolver.cache["item_301"]["source"] == "placeholder"
+
+    def test_resolve_cover_records_correct_source_for_isbn_lookup(self, temp_dir):
+        """resolve_cover() should record 'open_library_isbn' as source when ISBN lookup succeeds."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_400",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test book",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "9781234567890"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            resolver.resolve_cover(item)
+
+            assert resolver.cache["item_400"]["source"] == "open_library_isbn"
+
+    def test_resolve_cover_records_correct_source_for_title_lookup(self, temp_dir):
+        """resolve_cover() should record 'open_library_title' as source when title lookup succeeds."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_401",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test book",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "0000000000"},  # Invalid ISBN
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            # ISBN fails, title succeeds
+            mock_response_fail = Mock()
+            mock_response_fail.status_code = 404
+
+            mock_response_success = Mock()
+            mock_response_success.status_code = 200
+            mock_response_success.headers = {"content-type": "image/jpeg"}
+
+            mock_head.side_effect = [mock_response_fail, mock_response_success]
+
+            resolver.resolve_cover(item)
+
+            assert resolver.cache["item_401"]["source"] == "open_library_title"
+
+    def test_resolve_cover_records_correct_source_for_google_books(self, temp_dir):
+        """resolve_cover() should record 'google_books' as source when Google Books succeeds."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_402",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test book",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={"isbn": "0000000000"},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head, \
+             patch("src.library.cover_resolver.requests.get") as mock_get:
+            # Open Library fails
+            mock_head_response = Mock()
+            mock_head_response.status_code = 404
+            mock_head.return_value = mock_head_response
+
+            # Google Books succeeds
+            mock_get_response = Mock()
+            mock_get_response.status_code = 200
+            mock_get_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "thumbnail": "https://books.google.com/thumbnail.jpg"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_get_response
+
+            resolver.resolve_cover(item)
+
+            assert resolver.cache["item_402"]["source"] == "google_books"
+
+    def test_resolve_cover_for_book_without_isbn_skips_isbn_lookup(self, temp_dir):
+        """resolve_cover() should skip ISBN lookup for books without ISBN in metadata."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_500",
+            content_type=ContentType.BOOK,
+            title="Book Without ISBN",
+            summary="A book without ISBN",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},  # No ISBN
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            result = resolver.resolve_cover(item)
+
+            # Should only call once (title lookup), not twice (no ISBN lookup)
+            assert mock_head.call_count == 1
+            # URL should be title-based
+            assert "title" in result
+
+    def test_resolve_cover_saves_cache_to_disk(self, temp_dir):
+        """resolve_cover() should persist cache to disk after resolving."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        item = LibraryItem(
+            id="item_600",
+            content_type=ContentType.ARTICLE,
+            title="Test Article",
+            summary="A test article",
+            full_content="Full content here",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime.now(),
+            highlights=[]
+        )
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+        resolver.resolve_cover(item)
+
+        # Cache file should exist and contain the entry
+        assert (cache_dir / "cover_cache.json").exists()
+
+        with open(cache_dir / "cover_cache.json") as f:
+            saved_cache = json.load(f)
+
+        assert "item_600" in saved_cache
+
+    def test_resolve_cover_handles_all_content_types(self, temp_dir):
+        """resolve_cover() should return a placeholder for all non-book content types."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        non_book_types = [
+            ContentType.ARTICLE,
+            ContentType.FRAMEWORK,
+            ContentType.VALUE,
+            ContentType.PREFERENCE,
+            ContentType.MEMORY,
+            ContentType.INSIGHT,
+            ContentType.GOAL,
+            ContentType.SKILL,
+            ContentType.WEB_CONTENT,
+        ]
+
+        for content_type in non_book_types:
+            item = LibraryItem(
+                id=f"item_{content_type.value}",
+                content_type=content_type,
+                title=f"Test {content_type.value}",
+                summary=f"A test {content_type.value}",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[]
+            )
+
+            result = resolver.resolve_cover(item)
+
+            # Should return a placeholder path containing the content type
+            assert content_type.value in result.lower()
+            assert result.endswith(".svg")
