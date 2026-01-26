@@ -126,7 +126,7 @@ data/library-site/         # Generated site
 - [x] 27. Implement _generate_summary() summary truncation logic
 - [x] 28. Write tests for _extract_highlights() (key_points from values, steps from frameworks)
 - [x] 29. Implement _extract_highlights() extraction by content type
-- [ ] 30. Write tests for _convert_document() transforming ChromaDB doc to LibraryItem
+- [x] 30. Write tests for _convert_document() transforming ChromaDB doc to LibraryItem
 - [ ] 31. Implement _convert_document() method
 - [ ] 32. Write tests for export_all() returning List[LibraryItem]
 - [ ] 33. Implement export_all() calling KnowledgeBase.export_knowledge()
