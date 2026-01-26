@@ -672,3 +672,45 @@ Important:
                 self.assignments.append(assignment)
 
         return new_assignments
+
+    def get_items_for_theme(
+        self, theme_id: str, items: list[LibraryItem]
+    ) -> list[LibraryItem]:
+        """Get all items assigned to a specific theme.
+
+        Returns the LibraryItem objects from the provided items list that have
+        been assigned to the specified theme. Items are returned in the order
+        they appear in the input items list.
+
+        Args:
+            theme_id: The ID of the theme to get items for.
+            items: List of LibraryItem objects to filter.
+
+        Returns:
+            List of LibraryItem objects assigned to the theme. Returns empty
+            list if:
+            - The items list is empty
+            - No assignments exist for the theme
+            - No items in the items list are assigned to the theme
+        """
+        if not items:
+            return []
+
+        # Get the set of item IDs assigned to this theme
+        assigned_item_ids = {
+            a.item_id for a in self.assignments if a.theme_id == theme_id
+        }
+
+        if not assigned_item_ids:
+            return []
+
+        # Build a lookup map for provided items
+        items_map = {item.id: item for item in items}
+
+        # Return items that are both assigned to the theme AND in the provided list
+        # Preserve the order from the original items list
+        result = [
+            item for item in items if item.id in assigned_item_ids
+        ]
+
+        return result

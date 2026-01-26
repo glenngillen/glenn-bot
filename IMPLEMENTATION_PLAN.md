@@ -161,7 +161,7 @@ data/library-site/         # Generated site
 - [x] 59. Write tests for "Miscellaneous" catch-all theme (confidence < 0.3)
 - [x] 60. Implement catch-all theme handling
 - [x] 61. Write tests for get_items_for_theme() returning assigned items
-- [ ] 62. Implement get_items_for_theme() method
+- [x] 62. Implement get_items_for_theme() method
 
 ### Phase 5: Cover Image Resolution (21 tasks)
 
