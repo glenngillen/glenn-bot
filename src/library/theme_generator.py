@@ -8,6 +8,7 @@ Themes are persisted to disk and can be updated incrementally as new content
 is added to the knowledge base.
 """
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Union
 
@@ -58,3 +59,14 @@ class ThemeGenerator:
         # Initialize empty lists for themes and assignments
         self.themes: list[Theme] = []
         self.assignments: list[ThemeAssignment] = []
+
+    def save_themes(self) -> None:
+        """Save themes to themes.json file in the data directory.
+
+        Serializes all themes in self.themes to JSON format and writes
+        them to the themes.json file. Uses indentation for human-readable
+        output. Overwrites any existing file.
+        """
+        themes_data = [theme.to_dict() for theme in self.themes]
+        with open(self.themes_file, "w") as f:
+            json.dump(themes_data, f, indent=2)
