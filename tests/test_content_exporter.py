@@ -357,3 +357,159 @@ class TestGenerateTitle:
 
         # Should take first 50 chars, which includes the first line
         assert "First line of content" in result
+
+
+class TestGenerateSummary:
+    """Tests for _generate_summary() method truncation at 200 characters."""
+
+    def test_generate_summary_truncates_at_200_chars(self, mock_knowledge_base):
+        """Summary should be truncated at 200 characters with ellipsis."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        # Create content longer than 200 characters
+        content = "A" * 250
+
+        result = exporter._generate_summary(content)
+
+        assert len(result) <= 203  # 200 chars + "..."
+        assert result.endswith("...")
+
+    def test_generate_summary_preserves_short_content(self, mock_knowledge_base):
+        """Content under 200 chars should not be truncated."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        content = "This is a short summary."
+
+        result = exporter._generate_summary(content)
+
+        assert result == content
+        assert not result.endswith("...")
+
+    def test_generate_summary_exactly_200_chars_no_ellipsis(self, mock_knowledge_base):
+        """Content exactly 200 chars should not have ellipsis."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        # Exactly 200 characters
+        content = "A" * 200
+
+        result = exporter._generate_summary(content)
+
+        assert result == content
+        assert len(result) == 200
+        assert not result.endswith("...")
+
+    def test_generate_summary_201_chars_gets_ellipsis(self, mock_knowledge_base):
+        """Content at 201 chars should be truncated with ellipsis."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        # 201 characters
+        content = "A" * 201
+
+        result = exporter._generate_summary(content)
+
+        assert len(result) == 203  # 200 chars + "..."
+        assert result == "A" * 200 + "..."
+
+    def test_generate_summary_handles_empty_content(self, mock_knowledge_base):
+        """Empty content should return empty string."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        content = ""
+
+        result = exporter._generate_summary(content)
+
+        assert result == ""
+
+    def test_generate_summary_handles_none_content(self, mock_knowledge_base):
+        """None content should return empty string."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+
+        result = exporter._generate_summary(None)
+
+        assert result == ""
+
+    def test_generate_summary_strips_whitespace(self, mock_knowledge_base):
+        """Leading and trailing whitespace should be stripped before truncation."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        content = "   Content with whitespace   "
+
+        result = exporter._generate_summary(content)
+
+        assert result == "Content with whitespace"
+
+    def test_generate_summary_whitespace_only_returns_empty(self, mock_knowledge_base):
+        """Whitespace-only content should return empty string."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        content = "   \n\t  "
+
+        result = exporter._generate_summary(content)
+
+        assert result == ""
+
+    def test_generate_summary_preserves_internal_whitespace(self, mock_knowledge_base):
+        """Internal whitespace should be preserved."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        content = "Word one  Word two\tWord three"
+
+        result = exporter._generate_summary(content)
+
+        assert result == content
+
+    def test_generate_summary_handles_newlines(self, mock_knowledge_base):
+        """Newlines in content should be preserved (for display handling)."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        content = "First line\nSecond line\nThird line"
+
+        result = exporter._generate_summary(content)
+
+        assert result == content
+
+    def test_generate_summary_truncates_at_word_boundary_optionally(
+        self, mock_knowledge_base
+    ):
+        """Truncation at 200 chars is character-based, not word-based."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        # Create content that is 205 chars with a word spanning the 200 boundary
+        words = "word " * 50  # "word " is 5 chars, 50 times = 250 chars
+        content = words[:205]
+
+        result = exporter._generate_summary(content)
+
+        # Should truncate at exactly 200 chars + ellipsis
+        assert len(result) == 203
+        assert result.endswith("...")
+
+    def test_generate_summary_long_realistic_content(self, mock_knowledge_base):
+        """Test with realistic content that exceeds 200 characters."""
+        from src.library.content_exporter import ContentExporter
+
+        exporter = ContentExporter(mock_knowledge_base)
+        content = (
+            "This is a longer piece of content that simulates a real knowledge base "
+            "entry. It contains multiple sentences and spans well over two hundred "
+            "characters to test the truncation behavior properly. We want to ensure "
+            "it gets truncated at exactly 200 characters."
+        )
+
+        result = exporter._generate_summary(content)
+
+        assert len(result) == 203  # 200 + "..."
+        assert result.endswith("...")
+        assert result[:200] == content[:200]
