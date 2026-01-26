@@ -154,5 +154,48 @@ class Theme:
         )
 
 
-# Placeholder - implementation will be added following TDD
-ThemeAssignment = None
+@dataclass
+class ThemeAssignment:
+    """Mapping between a library item and a theme with confidence score.
+
+    ThemeAssignments represent the many-to-many relationship between
+    LibraryItems and Themes. Each assignment includes a confidence score
+    indicating how strongly the item belongs to the theme.
+    """
+
+    item_id: str  # ID of the library item
+    theme_id: str  # ID of the theme
+    confidence: float  # Confidence score from 0.0 to 1.0
+    assigned_at: datetime  # When the assignment was made
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the ThemeAssignment to a dictionary for serialization.
+
+        Returns:
+            A dictionary with all fields serialized. The assigned_at
+            datetime is converted to ISO format string.
+        """
+        return {
+            "item_id": self.item_id,
+            "theme_id": self.theme_id,
+            "confidence": self.confidence,
+            "assigned_at": self.assigned_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ThemeAssignment":
+        """Create a ThemeAssignment from a dictionary.
+
+        Args:
+            data: A dictionary with ThemeAssignment fields. The assigned_at
+                field should be an ISO format datetime string.
+
+        Returns:
+            A new ThemeAssignment instance.
+        """
+        return cls(
+            item_id=data["item_id"],
+            theme_id=data["theme_id"],
+            confidence=data["confidence"],
+            assigned_at=datetime.fromisoformat(data["assigned_at"]),
+        )
