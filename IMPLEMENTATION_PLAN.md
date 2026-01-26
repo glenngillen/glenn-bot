@@ -149,7 +149,7 @@ data/library-site/         # Generated site
 - [x] 47. Write tests for _parse_themes_from_response() parsing JSON into Theme objects
 - [x] 48. Implement _parse_themes_from_response() method
 - [x] 49. Write tests for generate_themes() orchestration (LLM call, parse, save)
-- [ ] 50. Implement generate_themes() calling OllamaClient.generate()
+- [x] 50. Implement generate_themes() calling OllamaClient.generate()
 - [ ] 51. Write tests for _build_assignment_prompt() for item-to-theme assignment
 - [ ] 52. Implement _build_assignment_prompt() method
 - [ ] 53. Write tests for _parse_assignments_from_response() parsing into ThemeAssignment
