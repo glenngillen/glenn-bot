@@ -723,3 +723,396 @@ class TestFetchCoverByTitle:
             actual_url = mock_head.call_args[0][0]
             # Should not have leading/trailing encoded spaces
             assert actual_url == "https://covers.openlibrary.org/b/title/Thinking%20in%20Systems-L.jpg"
+
+
+class TestFetchCoverFromGoogleBooks:
+    """Tests for _fetch_cover_from_google_books() method that calls Google Books API."""
+
+    def test_fetch_cover_from_google_books_constructs_correct_url(self, temp_dir):
+        """_fetch_cover_from_google_books() should construct the correct Google Books API URL."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "thumbnail": "https://books.google.com/books/content?id=abc123"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            resolver._fetch_cover_from_google_books("Thinking in Systems")
+
+            mock_get.assert_called_once()
+            actual_url = mock_get.call_args[0][0]
+            assert "googleapis.com/books/v1/volumes" in actual_url
+            assert "intitle:Thinking" in actual_url or "intitle%3AThinking" in actual_url
+
+    def test_fetch_cover_from_google_books_returns_thumbnail_url_on_success(self, temp_dir):
+        """_fetch_cover_from_google_books() should return the thumbnail URL when found."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "thumbnail": "https://books.google.com/books/content?id=abc123"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            result = resolver._fetch_cover_from_google_books("Thinking in Systems")
+
+            assert result == "https://books.google.com/books/content?id=abc123"
+
+    def test_fetch_cover_from_google_books_returns_none_on_404(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None when API returns 404."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 404
+            mock_get.return_value = mock_response
+
+            result = resolver._fetch_cover_from_google_books("NonExistent Book")
+
+            assert result is None
+
+    def test_fetch_cover_from_google_books_returns_none_on_empty_items(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None when no items in response."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"totalItems": 0}
+            mock_get.return_value = mock_response
+
+            result = resolver._fetch_cover_from_google_books("NonExistent Book Title")
+
+            assert result is None
+
+    def test_fetch_cover_from_google_books_returns_none_when_no_image_links(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None when item has no imageLinks."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "title": "A Book Without Cover"
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            result = resolver._fetch_cover_from_google_books("A Book Without Cover")
+
+            assert result is None
+
+    def test_fetch_cover_from_google_books_handles_request_exception(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None on network errors."""
+        from src.library.cover_resolver import CoverResolver
+        import requests
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_get.side_effect = requests.RequestException("Connection error")
+
+            result = resolver._fetch_cover_from_google_books("Thinking in Systems")
+
+            assert result is None
+
+    def test_fetch_cover_from_google_books_handles_timeout(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None on request timeout."""
+        from src.library.cover_resolver import CoverResolver
+        import requests
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_get.side_effect = requests.Timeout("Request timed out")
+
+            result = resolver._fetch_cover_from_google_books("Thinking in Systems")
+
+            assert result is None
+
+    def test_fetch_cover_from_google_books_handles_json_decode_error(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None on invalid JSON response."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.side_effect = ValueError("Invalid JSON")
+            mock_get.return_value = mock_response
+
+            result = resolver._fetch_cover_from_google_books("Test Book")
+
+            assert result is None
+
+    def test_fetch_cover_from_google_books_url_encodes_special_characters(self, temp_dir):
+        """_fetch_cover_from_google_books() should URL-encode special characters in title."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "thumbnail": "https://books.google.com/books/content?id=xyz"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            # Title with special characters
+            resolver._fetch_cover_from_google_books("The Art & Science: A Beginner's Guide")
+
+            actual_url = mock_get.call_args[0][0]
+            # Spaces should be encoded as %20 or +
+            assert " " not in actual_url or "+" in actual_url
+
+    def test_fetch_cover_from_google_books_uses_timeout(self, temp_dir):
+        """_fetch_cover_from_google_books() should use a reasonable timeout for the request."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "thumbnail": "https://books.google.com/books/content?id=abc"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            resolver._fetch_cover_from_google_books("Test Book")
+
+            # Verify a timeout is specified
+            assert "timeout" in mock_get.call_args.kwargs
+            # Timeout should be reasonable (5-30 seconds)
+            timeout = mock_get.call_args.kwargs["timeout"]
+            assert 5 <= timeout <= 30
+
+    def test_fetch_cover_from_google_books_handles_empty_title(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None for empty title."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver._fetch_cover_from_google_books("")
+
+        assert result is None
+
+    def test_fetch_cover_from_google_books_handles_whitespace_only_title(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None for whitespace-only title."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver._fetch_cover_from_google_books("   ")
+
+        assert result is None
+
+    def test_fetch_cover_from_google_books_strips_whitespace(self, temp_dir):
+        """_fetch_cover_from_google_books() should strip leading/trailing whitespace."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "thumbnail": "https://books.google.com/books/content?id=abc"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            resolver._fetch_cover_from_google_books("  Test Book  ")
+
+            actual_url = mock_get.call_args[0][0]
+            # Should not have leading/trailing encoded spaces in the search query
+            assert "%20%20" not in actual_url
+            assert "++Test" not in actual_url
+            assert "Book++" not in actual_url
+
+    def test_fetch_cover_from_google_books_prefers_larger_image_if_available(self, temp_dir):
+        """_fetch_cover_from_google_books() should prefer smallThumbnail over thumbnail if both present."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            # Google Books provides both thumbnail and smallThumbnail
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "smallThumbnail": "https://books.google.com/small.jpg",
+                                "thumbnail": "https://books.google.com/thumbnail.jpg"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            result = resolver._fetch_cover_from_google_books("Test Book")
+
+            # Should return thumbnail (larger) if available
+            assert result == "https://books.google.com/thumbnail.jpg"
+
+    def test_fetch_cover_from_google_books_falls_back_to_small_thumbnail(self, temp_dir):
+        """_fetch_cover_from_google_books() should fall back to smallThumbnail if no thumbnail."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            # Only smallThumbnail available
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "volumeInfo": {
+                            "imageLinks": {
+                                "smallThumbnail": "https://books.google.com/small.jpg"
+                            }
+                        }
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            result = resolver._fetch_cover_from_google_books("Test Book")
+
+            assert result == "https://books.google.com/small.jpg"
+
+    def test_fetch_cover_from_google_books_returns_none_on_missing_volume_info(self, temp_dir):
+        """_fetch_cover_from_google_books() should return None when volumeInfo is missing."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "items": [
+                    {
+                        "kind": "books#volume"
+                    }
+                ]
+            }
+            mock_get.return_value = mock_response
+
+            result = resolver._fetch_cover_from_google_books("Test Book")
+
+            assert result is None
