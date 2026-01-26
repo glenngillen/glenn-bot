@@ -171,3 +171,79 @@ class CoverResolver:
 
         except (requests.RequestException, requests.Timeout):
             return None
+
+    def _fetch_cover_from_google_books(self, title: str) -> Optional[str]:
+        """Fetch a book cover URL from Google Books API by title.
+
+        Searches the Google Books API for the given title and extracts the
+        thumbnail URL from the first result's volumeInfo.imageLinks.
+
+        This is a fallback when Open Library lookups fail.
+
+        Args:
+            title: The book's title. Will be URL-encoded. Leading/trailing
+                whitespace will be stripped.
+
+        Returns:
+            The cover thumbnail URL if found, None otherwise.
+            Returns None for empty/whitespace-only titles, API errors,
+            no results, missing imageLinks, or network errors.
+            Prefers 'thumbnail' over 'smallThumbnail' if both are available.
+        """
+        # Handle empty or whitespace-only titles
+        if not title or not title.strip():
+            return None
+
+        # Strip leading/trailing whitespace
+        clean_title = title.strip()
+
+        # URL-encode the title for the search query
+        from urllib.parse import quote
+
+        encoded_title = quote(clean_title, safe="")
+
+        # Construct the Google Books API URL
+        url = f"https://www.googleapis.com/books/v1/volumes?q=intitle:{encoded_title}"
+
+        try:
+            # Make a GET request to the API
+            response = requests.get(url, timeout=10)
+
+            # Check if the request was successful
+            if response.status_code != 200:
+                return None
+
+            # Parse the JSON response
+            try:
+                data = response.json()
+            except ValueError:
+                return None
+
+            # Check if there are any items in the response
+            items = data.get("items")
+            if not items:
+                return None
+
+            # Get the first result
+            first_item = items[0]
+
+            # Extract volumeInfo
+            volume_info = first_item.get("volumeInfo")
+            if not volume_info:
+                return None
+
+            # Extract imageLinks
+            image_links = volume_info.get("imageLinks")
+            if not image_links:
+                return None
+
+            # Prefer 'thumbnail' (larger) over 'smallThumbnail'
+            if "thumbnail" in image_links:
+                return image_links["thumbnail"]
+            elif "smallThumbnail" in image_links:
+                return image_links["smallThumbnail"]
+
+            return None
+
+        except (requests.RequestException, requests.Timeout):
+            return None
