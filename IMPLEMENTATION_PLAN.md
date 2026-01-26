@@ -128,7 +128,7 @@ data/library-site/         # Generated site
 - [x] 29. Implement _extract_highlights() extraction by content type
 - [x] 30. Write tests for _convert_document() transforming ChromaDB doc to LibraryItem
 - [x] 31. Implement _convert_document() method
-- [ ] 32. Write tests for export_all() returning List[LibraryItem]
+- [x] 32. Write tests for export_all() returning List[LibraryItem]
 - [ ] 33. Implement export_all() calling KnowledgeBase.export_knowledge()
 
 ### Phase 4: Theme Generation (29 tasks)
