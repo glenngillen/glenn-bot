@@ -310,8 +310,8 @@ data/library-site/         # Generated site
 - [x] 178. Verify Jinja2 autoescape is enabled
 - [x] 179. Write tests for items without source_url
 - [x] 180. Implement conditional source link in item.html
-- [ ] 181. Write tests for items without highlights
-- [ ] 182. Implement conditional highlights section
+- [x] 181. Write tests for items without highlights
+- [x] 182. Implement conditional highlights section
 - [ ] 183. Write tests for small knowledge base (minimum 3 themes)
 - [ ] 184. Implement minimum theme count logic
 - [ ] 185. Write integration test for full build process

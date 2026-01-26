@@ -1553,3 +1553,371 @@ class TestItemsWithoutHighlights:
         assert "First line" in content
         # Page should still have valid structure
         assert "Key Highlights" in content
+
+
+class TestSmallKnowledgeBaseMinimumThemes:
+    """Tests for small knowledge base with minimum themes (Task 183).
+
+    When the knowledge base is small, the library should:
+    - Generate at least 3 themes (minimum threshold)
+    - Add default themes if LLM returns fewer than 3
+    - Still work correctly when LLM returns 3+ themes
+    - Handle edge cases like empty LLM responses
+    """
+
+    def test_theme_generator_ensures_minimum_three_themes(self, temp_dir):
+        """ThemeGenerator should ensure at least 3 themes are generated."""
+        from src.library.theme_generator import ThemeGenerator
+
+        mock_ollama = MagicMock()
+        # LLM returns only 1 theme
+        mock_ollama.generate.return_value = """[
+            {
+                "id": "personal-growth",
+                "name": "Personal Growth",
+                "description": "Self-improvement content",
+                "keywords": ["growth", "improvement"]
+            }
+        ]"""
+
+        generator = ThemeGenerator(
+            ollama_client=mock_ollama,
+            data_dir=temp_dir / "library",
+        )
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="A Book",
+                summary="A summary",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            )
+        ]
+
+        themes = generator.generate_themes(items)
+        themes = generator.ensure_minimum_themes()
+
+        # Should have at least 3 themes
+        assert len(themes) >= 3
+
+    def test_theme_generator_returns_llm_themes_if_three_or_more(self, temp_dir):
+        """ThemeGenerator should return LLM themes if 3+ are returned."""
+        from src.library.theme_generator import ThemeGenerator
+
+        mock_ollama = MagicMock()
+        # LLM returns exactly 3 themes
+        mock_ollama.generate.return_value = """[
+            {"id": "theme-1", "name": "Theme 1", "description": "Desc 1", "keywords": []},
+            {"id": "theme-2", "name": "Theme 2", "description": "Desc 2", "keywords": []},
+            {"id": "theme-3", "name": "Theme 3", "description": "Desc 3", "keywords": []}
+        ]"""
+
+        generator = ThemeGenerator(
+            ollama_client=mock_ollama,
+            data_dir=temp_dir / "library",
+        )
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="A Book",
+                summary="A summary",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            )
+        ]
+
+        themes = generator.generate_themes(items)
+        themes = generator.ensure_minimum_themes()
+
+        # Should have exactly 3 themes (no extras added)
+        assert len(themes) == 3
+        # Original theme IDs should be preserved
+        theme_ids = {t.id for t in themes}
+        assert "theme-1" in theme_ids
+        assert "theme-2" in theme_ids
+        assert "theme-3" in theme_ids
+
+    def test_theme_generator_adds_default_themes_for_small_library(self, temp_dir):
+        """ThemeGenerator should add default themes when LLM returns too few."""
+        from src.library.theme_generator import ThemeGenerator
+
+        mock_ollama = MagicMock()
+        # LLM returns only 2 themes
+        mock_ollama.generate.return_value = """[
+            {"id": "learning", "name": "Learning", "description": "Learning content", "keywords": []},
+            {"id": "productivity", "name": "Productivity", "description": "Productivity tips", "keywords": []}
+        ]"""
+
+        generator = ThemeGenerator(
+            ollama_client=mock_ollama,
+            data_dir=temp_dir / "library",
+        )
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.VALUE,
+                title="A Value",
+                summary="A summary",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            )
+        ]
+
+        themes = generator.generate_themes(items)
+        themes = generator.ensure_minimum_themes()
+
+        # Should have at least 3 themes
+        assert len(themes) >= 3
+        # Original themes should be preserved
+        theme_ids = {t.id for t in themes}
+        assert "learning" in theme_ids
+        assert "productivity" in theme_ids
+
+    def test_theme_generator_handles_empty_llm_response(self, temp_dir):
+        """ThemeGenerator should create default themes when LLM returns nothing."""
+        from src.library.theme_generator import ThemeGenerator
+
+        mock_ollama = MagicMock()
+        # LLM returns empty response
+        mock_ollama.generate.return_value = "[]"
+
+        generator = ThemeGenerator(
+            ollama_client=mock_ollama,
+            data_dir=temp_dir / "library",
+        )
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.MEMORY,
+                title="A Memory",
+                summary="A summary",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            )
+        ]
+
+        themes = generator.generate_themes(items)
+        themes = generator.ensure_minimum_themes()
+
+        # Should still have at least 3 themes
+        assert len(themes) >= 3
+
+    def test_ensure_minimum_themes_method_exists(self, temp_dir):
+        """ThemeGenerator should have ensure_minimum_themes method."""
+        from src.library.theme_generator import ThemeGenerator
+
+        mock_ollama = MagicMock()
+
+        generator = ThemeGenerator(
+            ollama_client=mock_ollama,
+            data_dir=temp_dir / "library",
+        )
+
+        assert hasattr(generator, "ensure_minimum_themes")
+        assert callable(getattr(generator, "ensure_minimum_themes"))
+
+    def test_default_themes_have_valid_structure(self, temp_dir):
+        """Default themes added should have valid Theme structure."""
+        from src.library.theme_generator import ThemeGenerator
+
+        mock_ollama = MagicMock()
+        # LLM returns no themes
+        mock_ollama.generate.return_value = "[]"
+
+        generator = ThemeGenerator(
+            ollama_client=mock_ollama,
+            data_dir=temp_dir / "library",
+        )
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Book",
+                summary="Summary",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            )
+        ]
+
+        generator.generate_themes(items)
+        themes = generator.ensure_minimum_themes()
+
+        for theme in themes:
+            # Each theme should have required fields
+            assert theme.id is not None and len(theme.id) > 0
+            assert theme.name is not None and len(theme.name) > 0
+            assert theme.description is not None
+            assert isinstance(theme.keywords, list)
+            assert theme.created_at is not None
+            assert theme.updated_at is not None
+
+    def test_minimum_themes_saved_to_disk(self, temp_dir):
+        """Themes including defaults should be saved to themes.json."""
+        from src.library.theme_generator import ThemeGenerator
+
+        mock_ollama = MagicMock()
+        # LLM returns only 1 theme
+        mock_ollama.generate.return_value = """[
+            {"id": "single-theme", "name": "Single Theme", "description": "Only one", "keywords": []}
+        ]"""
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+        )
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Book",
+                summary="Summary",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            )
+        ]
+
+        generator.generate_themes(items)
+        generator.ensure_minimum_themes()
+        generator.save_themes()
+
+        # Read saved themes from disk
+        themes_file = data_dir / "themes.json"
+        assert themes_file.exists()
+
+        with open(themes_file) as f:
+            saved_themes = json.load(f)
+
+        # Should have at least 3 themes saved
+        assert len(saved_themes) >= 3
+
+    def test_ensure_minimum_themes_is_idempotent(self, temp_dir):
+        """Calling ensure_minimum_themes multiple times should not add duplicates."""
+        from src.library.theme_generator import ThemeGenerator
+
+        mock_ollama = MagicMock()
+        mock_ollama.generate.return_value = """[
+            {"id": "one-theme", "name": "One Theme", "description": "Just one", "keywords": []}
+        ]"""
+
+        generator = ThemeGenerator(
+            ollama_client=mock_ollama,
+            data_dir=temp_dir / "library",
+        )
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Book",
+                summary="Summary",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime.now(),
+                highlights=[],
+            )
+        ]
+
+        generator.generate_themes(items)
+
+        # Call ensure_minimum_themes multiple times
+        themes1 = generator.ensure_minimum_themes()
+        themes2 = generator.ensure_minimum_themes()
+        themes3 = generator.ensure_minimum_themes()
+
+        # Count should remain the same
+        assert len(themes1) == len(themes2) == len(themes3)
+        # Should still be at least 3
+        assert len(themes3) >= 3
+
+    def test_builder_uses_minimum_themes_for_small_library(self, temp_dir):
+        """LibraryBuilder should ensure minimum themes when building small library."""
+        from src.library.builder import LibraryBuilder
+
+        mock_knowledge_base = MagicMock()
+        # Small library with just 2 items
+        mock_knowledge_base.export_knowledge.return_value = {
+            "documents": [
+                {
+                    "id": "doc-1",
+                    "content": "Some content",
+                    "metadata": {"type": "value", "name": "Value 1"},
+                },
+                {
+                    "id": "doc-2",
+                    "content": "Other content",
+                    "metadata": {"type": "framework", "name": "Framework 1"},
+                },
+            ]
+        }
+
+        mock_ollama = MagicMock()
+        # LLM returns only 2 themes
+        mock_ollama.generate.side_effect = [
+            # First call for theme generation
+            """[
+                {"id": "theme-a", "name": "Theme A", "description": "A", "keywords": []},
+                {"id": "theme-b", "name": "Theme B", "description": "B", "keywords": []}
+            ]""",
+            # Second call for assignments
+            """[
+                {"item_id": "doc-1", "theme_id": "theme-a", "confidence": 0.8},
+                {"item_id": "doc-2", "theme_id": "theme-b", "confidence": 0.7}
+            ]""",
+        ]
+
+        data_dir = temp_dir / "library"
+        site_dir = temp_dir / "library-site"
+
+        builder = LibraryBuilder(
+            knowledge_base=mock_knowledge_base,
+            ollama_client=mock_ollama,
+            data_dir=data_dir,
+            site_dir=site_dir,
+        )
+
+        result = builder.build()
+
+        # Should have at least 3 themes
+        assert result["themes_count"] >= 3
