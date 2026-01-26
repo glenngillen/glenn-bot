@@ -269,6 +269,87 @@ Important:
 
         return None
 
+    def _build_assignment_prompt(
+        self, items: list[LibraryItem], themes: list[Theme]
+    ) -> str:
+        """Build the prompt for LLM item-to-theme assignment.
+
+        Constructs a prompt that asks the LLM to assign each item to one or more
+        themes with confidence scores. The prompt includes all theme information
+        (id, name, description, keywords) and all item information (id, title,
+        summary, content type) to help the LLM make informed assignments.
+
+        Args:
+            items: List of LibraryItem objects to assign to themes.
+            themes: List of Theme objects representing available categories.
+
+        Returns:
+            A string prompt for the LLM to generate theme assignments in JSON format.
+        """
+        # Build the themes section
+        if not themes:
+            themes_section = "No themes available for assignment."
+        else:
+            theme_lines = []
+            for theme in themes:
+                keywords_str = ", ".join(theme.keywords) if theme.keywords else "none"
+                theme_lines.append(
+                    f"- ID: {theme.id}\n"
+                    f"  Name: {theme.name}\n"
+                    f"  Description: {theme.description}\n"
+                    f"  Keywords: {keywords_str}"
+                )
+            themes_section = "\n".join(theme_lines)
+
+        # Build the items section
+        if not items:
+            items_section = "No items to assign."
+        else:
+            item_lines = []
+            for item in items:
+                content_type = item.content_type.value
+                item_lines.append(
+                    f"- ID: {item.id}\n"
+                    f"  Title: {item.title}\n"
+                    f"  Type: {content_type}\n"
+                    f"  Summary: {item.summary}"
+                )
+            items_section = "\n".join(item_lines)
+
+        prompt = f"""Assign each of the following items to one or more themes. Items can belong to multiple themes if they fit well.
+
+Available Themes:
+{themes_section}
+
+Items to Assign:
+{items_section}
+
+For each item-theme pair, provide a confidence score between 0.0 and 1.0 indicating how well the item fits the theme:
+- 1.0: Perfect fit, item is clearly about this theme
+- 0.7-0.9: Strong fit, item is highly relevant to this theme
+- 0.4-0.6: Moderate fit, item has some relevance to this theme
+- 0.1-0.3: Weak fit, item has minimal relevance to this theme
+
+Return your response as a JSON array of assignment objects with the following format:
+```json
+[
+  {{
+    "item_id": "the-item-id",
+    "theme_id": "the-theme-id",
+    "confidence": 0.85
+  }}
+]
+```
+
+Important:
+- Assign each item to at least one theme
+- An item can be assigned to multiple themes if it fits well (confidence >= 0.4)
+- Use the exact item_id and theme_id values provided above
+- Confidence scores must be between 0.0 and 1.0
+- Return only the JSON array, no additional text"""
+
+        return prompt
+
     def generate_themes(self, items: list[LibraryItem]) -> list[Theme]:
         """Generate themes from library items using AI.
 
