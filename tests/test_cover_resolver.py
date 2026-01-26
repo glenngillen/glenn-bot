@@ -490,3 +490,236 @@ class TestFetchCoverByIsbn:
 
             expected_url = "https://covers.openlibrary.org/b/isbn/9780134685991-L.jpg"
             assert result == expected_url
+
+
+class TestFetchCoverByTitle:
+    """Tests for _fetch_cover_by_title() method that calls Open Library API by title."""
+
+    def test_fetch_cover_by_title_constructs_correct_url(self, temp_dir):
+        """_fetch_cover_by_title() should construct the correct Open Library URL."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            resolver._fetch_cover_by_title("Thinking in Systems")
+
+            # Verify the URL construction
+            expected_url = "https://covers.openlibrary.org/b/title/Thinking%20in%20Systems-L.jpg"
+            mock_head.assert_called_once()
+            actual_url = mock_head.call_args[0][0]
+            assert actual_url == expected_url
+
+    def test_fetch_cover_by_title_returns_url_on_success(self, temp_dir):
+        """_fetch_cover_by_title() should return the cover URL when image exists."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_title("Thinking in Systems")
+
+            expected_url = "https://covers.openlibrary.org/b/title/Thinking%20in%20Systems-L.jpg"
+            assert result == expected_url
+
+    def test_fetch_cover_by_title_returns_none_on_404(self, temp_dir):
+        """_fetch_cover_by_title() should return None when image not found (404)."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 404
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_title("NonExistent Book Title")
+
+            assert result is None
+
+    def test_fetch_cover_by_title_returns_none_on_non_image_content_type(self, temp_dir):
+        """_fetch_cover_by_title() should return None when response is not an image."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "text/html"}
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_title("Some Book")
+
+            assert result is None
+
+    def test_fetch_cover_by_title_handles_request_exception(self, temp_dir):
+        """_fetch_cover_by_title() should return None on network errors."""
+        from src.library.cover_resolver import CoverResolver
+        import requests
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_head.side_effect = requests.RequestException("Connection error")
+
+            result = resolver._fetch_cover_by_title("Thinking in Systems")
+
+            assert result is None
+
+    def test_fetch_cover_by_title_handles_timeout(self, temp_dir):
+        """_fetch_cover_by_title() should return None on request timeout."""
+        from src.library.cover_resolver import CoverResolver
+        import requests
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_head.side_effect = requests.Timeout("Request timed out")
+
+            result = resolver._fetch_cover_by_title("Thinking in Systems")
+
+            assert result is None
+
+    def test_fetch_cover_by_title_url_encodes_special_characters(self, temp_dir):
+        """_fetch_cover_by_title() should URL-encode special characters in title."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            # Title with special characters: ampersand, apostrophe, colon
+            resolver._fetch_cover_by_title("The Art & Science of Java: A Beginner's Guide")
+
+            actual_url = mock_head.call_args[0][0]
+            # URL should be encoded (spaces, ampersand, apostrophe, colon)
+            assert " " not in actual_url
+            assert "&" not in actual_url or "%26" in actual_url
+            assert "'" not in actual_url or "%27" in actual_url
+            assert ":" not in actual_url or "%3A" in actual_url
+
+    def test_fetch_cover_by_title_uses_timeout(self, temp_dir):
+        """_fetch_cover_by_title() should use a reasonable timeout for the request."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            resolver._fetch_cover_by_title("Test Book")
+
+            # Verify a timeout is specified
+            assert "timeout" in mock_head.call_args.kwargs
+            # Timeout should be reasonable (5-30 seconds)
+            timeout = mock_head.call_args.kwargs["timeout"]
+            assert 5 <= timeout <= 30
+
+    def test_fetch_cover_by_title_accepts_png_content_type(self, temp_dir):
+        """_fetch_cover_by_title() should accept PNG images as valid covers."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/png"}
+            mock_head.return_value = mock_response
+
+            result = resolver._fetch_cover_by_title("Test Book")
+
+            expected_url = "https://covers.openlibrary.org/b/title/Test%20Book-L.jpg"
+            assert result == expected_url
+
+    def test_fetch_cover_by_title_handles_empty_title(self, temp_dir):
+        """_fetch_cover_by_title() should return None for empty title."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver._fetch_cover_by_title("")
+
+        assert result is None
+
+    def test_fetch_cover_by_title_handles_whitespace_only_title(self, temp_dir):
+        """_fetch_cover_by_title() should return None for whitespace-only title."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        result = resolver._fetch_cover_by_title("   ")
+
+        assert result is None
+
+    def test_fetch_cover_by_title_strips_leading_trailing_whitespace(self, temp_dir):
+        """_fetch_cover_by_title() should strip leading/trailing whitespace from title."""
+        from src.library.cover_resolver import CoverResolver
+
+        cache_dir = temp_dir / "library"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        resolver = CoverResolver(cache_dir=cache_dir)
+
+        with patch("src.library.cover_resolver.requests.head") as mock_head:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "image/jpeg"}
+            mock_head.return_value = mock_response
+
+            resolver._fetch_cover_by_title("  Thinking in Systems  ")
+
+            actual_url = mock_head.call_args[0][0]
+            # Should not have leading/trailing encoded spaces
+            assert actual_url == "https://covers.openlibrary.org/b/title/Thinking%20in%20Systems-L.jpg"
