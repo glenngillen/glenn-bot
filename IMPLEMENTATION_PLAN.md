@@ -90,13 +90,13 @@ data/library-site/         # Generated site
   - `library_data_dir: Path = Path("./data/library")`
   - `library_site_dir: Path = Path("./data/library-site")`
   - `library_server_port: int = 8080`
-- [ ] 4. Create `data/library/` directory structure (themes, cache, assignments)
-- [ ] 5. Add library-specific test fixtures to `tests/conftest.py`:
+- [x] 4. Create `data/library/` directory structure (themes, cache, assignments)
+- [x] 5. Add library-specific test fixtures to `tests/conftest.py`:
   - `sample_library_item` fixture
   - `sample_theme` fixture
   - `sample_theme_assignment` fixture
   - `sample_chromadb_document` fixture
-- [ ] 6. Create test file `tests/test_library_models.py`
+- [x] 6. Create test file `tests/test_library_models.py`
 
 ### Phase 2: Core Data Models (12 tasks)
 
