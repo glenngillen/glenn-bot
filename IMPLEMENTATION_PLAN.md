@@ -115,8 +115,8 @@ data/library-site/         # Generated site
 
 ### Phase 3: Content Export (15 tasks)
 
-- [ ] 19. Create test file `tests/test_content_exporter.py`
-- [ ] 20. Write tests for ContentExporter initialization with KnowledgeBase
+- [x] 19. Create test file `tests/test_content_exporter.py`
+- [x] 20. Write tests for ContentExporter initialization with KnowledgeBase
 - [ ] 21. Implement ContentExporter class skeleton in `src/library/content_exporter.py`
 - [ ] 22. Write tests for _infer_content_type() mapping (value->VALUE, framework->FRAMEWORK, web->WEB_CONTENT, preference->PREFERENCE, memory->MEMORY)
 - [ ] 23. Implement _infer_content_type() content type mapping
