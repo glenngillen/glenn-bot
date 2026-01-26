@@ -984,3 +984,356 @@ class TestLoadAssignments:
         generator.load_assignments()
 
         assert generator.assignments[0].confidence == 0.123456789
+
+
+class TestBuildThemeGenerationPrompt:
+    """Tests for _build_theme_generation_prompt() method that constructs the LLM prompt."""
+
+    def test_build_theme_generation_prompt_returns_string(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should return a string."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Thinking in Systems",
+                summary="A primer on systems thinking",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        assert isinstance(prompt, str)
+
+    def test_build_theme_generation_prompt_includes_item_titles(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should include item titles in the prompt."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Thinking in Systems",
+                summary="A primer on systems thinking",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.ARTICLE,
+                title="The Art of Decision Making",
+                summary="How to make better decisions",
+                full_content="Full article content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 16, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        assert "Thinking in Systems" in prompt
+        assert "The Art of Decision Making" in prompt
+
+    def test_build_theme_generation_prompt_includes_item_summaries(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should include item summaries in the prompt."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.FRAMEWORK,
+                title="First Principles Thinking",
+                summary="Break down problems to fundamental truths",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        assert "Break down problems to fundamental truths" in prompt
+
+    def test_build_theme_generation_prompt_includes_content_types(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should include content types in the prompt."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book summary",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.VALUE,
+                title="Test Value",
+                summary="A test value summary",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 16, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        assert "book" in prompt.lower()
+        assert "value" in prompt.lower()
+
+    def test_build_theme_generation_prompt_requests_5_to_10_themes(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should request 5-10 broad themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Item",
+                summary="A test summary",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        # Should mention the theme count range
+        assert "5" in prompt and "10" in prompt
+
+    def test_build_theme_generation_prompt_requests_json_format(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should request JSON output format."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Item",
+                summary="A test summary",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        # Should mention JSON format for structured output
+        assert "json" in prompt.lower()
+
+    def test_build_theme_generation_prompt_requests_theme_fields(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should request name, description, and keywords for each theme."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Item",
+                summary="A test summary",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        # Should mention the required fields for each theme
+        assert "name" in prompt.lower()
+        assert "description" in prompt.lower()
+        assert "keywords" in prompt.lower()
+
+    def test_build_theme_generation_prompt_with_empty_items_list(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should handle empty items list gracefully."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = []
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        # Should still return a valid prompt (may indicate no content)
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+
+    def test_build_theme_generation_prompt_with_multiple_items(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should handle multiple items of various types."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Systems Thinking Book",
+                summary="About complex systems",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.FRAMEWORK,
+                title="Decision Framework",
+                summary="How to make decisions",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 16, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-3",
+                content_type=ContentType.VALUE,
+                title="Continuous Learning",
+                summary="Always be learning",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 17, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-4",
+                content_type=ContentType.MEMORY,
+                title="Conference Talk Memory",
+                summary="Great insights from a conference",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 18, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-5",
+                content_type=ContentType.WEB_CONTENT,
+                title="Interesting Article",
+                summary="Web article about technology",
+                full_content="Content",
+                source_url="https://example.com",
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 19, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        # All items should be represented in the prompt
+        assert "Systems Thinking Book" in prompt
+        assert "Decision Framework" in prompt
+        assert "Continuous Learning" in prompt
+        assert "Conference Talk Memory" in prompt
+        assert "Interesting Article" in prompt
+
+    def test_build_theme_generation_prompt_requests_id_field(self, mock_ollama_client, temp_dir):
+        """_build_theme_generation_prompt() should request id (slug) field for each theme."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Item",
+                summary="A test summary",
+                full_content="Full content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_theme_generation_prompt(items)
+
+        # Should mention the id field (as slug format)
+        assert "id" in prompt.lower() or "slug" in prompt.lower()
