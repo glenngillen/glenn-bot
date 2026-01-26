@@ -90,3 +90,14 @@ class ThemeGenerator:
 
         self.themes = [Theme.from_dict(data) for data in themes_data]
         return self.themes
+
+    def save_assignments(self) -> None:
+        """Save assignments to assignments.json file in the data directory.
+
+        Serializes all assignments in self.assignments to JSON format and writes
+        them to the assignments.json file. Uses indentation for human-readable
+        output. Overwrites any existing file.
+        """
+        assignments_data = [assignment.to_dict() for assignment in self.assignments]
+        with open(self.assignments_file, "w") as f:
+            json.dump(assignments_data, f, indent=2)
