@@ -176,7 +176,7 @@ data/library-site/         # Generated site
 - [x] 71. Implement _fetch_cover_by_isbn() using requests library
 - [x] 72. Write tests for _fetch_cover_by_title() calling Open Library API
 - [x] 73. Implement _fetch_cover_by_title() fallback
-- [ ] 74. Write tests for _fetch_cover_from_google_books() API call
+- [x] 74. Write tests for _fetch_cover_from_google_books() API call
 - [ ] 75. Implement _fetch_cover_from_google_books() fallback
 - [ ] 76. Write tests for get_placeholder_url() (10 distinct placeholders)
 - [ ] 77. Implement get_placeholder_url() method
