@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "macros.html" import theme_card, stat %}
+
+{% block title %}Home{% endblock %}
+{% block description %}Browse the knowledge library organized by themes, or explore all content.{% endblock %}
+
+{% block content %}
+{# Stats Section #}
+<section class="stats">
+    {{ stat(total_items, 'Total Items') }}
+    {{ stat(total_themes, 'Themes') }}
+</section>
+
+{# Introduction #}
+<section class="mb-8">
+    <h2>Explore by Theme</h2>
+    <p class="text-secondary">Browse content organized by AI-generated thematic categories.</p>
+</section>
+
+{# Themes Grid #}
+{% if themes %}
+<section class="card-grid mb-8">
+    {% for theme in themes %}
+        {{ theme_card(theme) }}
+    {% endfor %}
+</section>
+{% else %}
+<section class="empty-state">
+    <div class="empty-state-icon">&#128218;</div>
+    <h3 class="empty-state-title">No themes yet</h3>
+    <p class="empty-state-message">Run the library builder to generate themes from your knowledge base.</p>
+</section>
+{% endif %}
+
+{# Link to All Content #}
+<section class="text-center mt-8">
+    <a href="/all/" class="btn btn-secondary">View All {{ total_items }} Items</a>
+</section>
+{% endblock %}

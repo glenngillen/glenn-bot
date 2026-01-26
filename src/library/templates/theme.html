@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "macros.html" import card %}
+
+{% block title %}{{ theme.name }}{% endblock %}
+{% block description %}{{ theme.description }}{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <span class="breadcrumbs-separator" aria-hidden="true">&gt;</span>
+    <span class="breadcrumbs-current" aria-current="page">{{ theme.name }}</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+{# Theme Header #}
+<header class="mb-8">
+    <h1>{{ theme.name }}</h1>
+    <p class="item-summary">{{ theme.description }}</p>
+    <p class="results-count">{{ items|length }} item{{ 's' if items|length != 1 else '' }} in this theme</p>
+</header>
+
+{# Items Grid #}
+{% if items %}
+<section class="card-grid">
+    {% for item in items %}
+        {{ card(item) }}
+    {% endfor %}
+</section>
+{% else %}
+<section class="empty-state">
+    <div class="empty-state-icon">&#128194;</div>
+    <h3 class="empty-state-title">No items in this theme</h3>
+    <p class="empty-state-message">This theme doesn't have any content assigned yet.</p>
+</section>
+{% endif %}
+
+{# Back Link #}
+<section class="text-center mt-8">
+    <a href="/" class="btn btn-secondary">Back to All Themes</a>
+</section>
+{% endblock %}

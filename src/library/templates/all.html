@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "macros.html" import card %}
+
+{% set active_page = 'all' %}
+
+{% block title %}All Content{% endblock %}
+{% block description %}Browse all {{ items|length }} items in the knowledge library.{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <span class="breadcrumbs-separator" aria-hidden="true">&gt;</span>
+    <span class="breadcrumbs-current" aria-current="page">All Content</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+{# Page Header #}
+<header class="mb-6">
+    <h1>All Content</h1>
+</header>
+
+{# Controls: Count and Sort #}
+<div class="controls">
+    <span id="all-content-count" class="results-count">Showing {{ items|length }} of {{ items|length }} items</span>
+    <div class="sort-controls">
+        <label class="sort-label" for="sort-select">Sort:</label>
+        <select id="sort-select" class="sort-select">
+            <option value="recent">Recent</option>
+            <option value="alpha">A-Z</option>
+            <option value="type">By Type</option>
+        </select>
+    </div>
+</div>
+
+{# Items Grid - Populated by JavaScript for client-side sort/pagination #}
+{% if items %}
+<section id="all-content-grid" class="card-grid">
+    {# Initial render - will be replaced by JS for dynamic sort/pagination #}
+    {% for item in items[:50] %}
+        {{ card(item) }}
+    {% endfor %}
+</section>
+
+{# Load More Button (for collections > 50 items) #}
+{% if items|length > 50 %}
+<div class="pagination">
+    <button id="load-more-btn" class="btn btn-secondary load-more-btn">Load More</button>
+</div>
+{% endif %}
+{% else %}
+<section class="empty-state">
+    <div class="empty-state-icon">&#128218;</div>
+    <h3 class="empty-state-title">No content yet</h3>
+    <p class="empty-state-message">Your knowledge library is empty. Add some content to get started.</p>
+</section>
+{% endif %}
+
+{# Back Link #}
+<section class="text-center mt-8">
+    <a href="/" class="btn btn-secondary">Back to Themes</a>
+</section>
+{% endblock %}

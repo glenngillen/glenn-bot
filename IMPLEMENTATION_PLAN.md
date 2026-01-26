@@ -220,14 +220,14 @@ data/library-site/         # Generated site
 
 ### Phase 8: HTML Templates (8 tasks)
 
-- [ ] 106. Create `src/library/templates/` directory
-- [ ] 107. Implement base.html (header nav, footer, CSS/JS includes, Fuse.js CDN)
-- [ ] 108. Implement _card.html macro (cover, badge, title, summary, link)
-- [ ] 109. Implement index.html (home with theme cards, stats, link to all)
-- [ ] 110. Implement theme.html (name, description, breadcrumb, item grid)
-- [ ] 111. Implement item.html (cover, title, badge, summary, source link, highlights, theme badges, metadata)
-- [ ] 112. Implement all.html (sort dropdown, item grid, pagination)
-- [ ] 113. Implement search.html (search input, results, no-results state)
+- [x] 106. Create `src/library/templates/` directory
+- [x] 107. Implement base.html (header nav, footer, CSS/JS includes, Fuse.js CDN)
+- [x] 108. Implement _card.html macro (cover, badge, title, summary, link)
+- [x] 109. Implement index.html (home with theme cards, stats, link to all)
+- [x] 110. Implement theme.html (name, description, breadcrumb, item grid)
+- [x] 111. Implement item.html (cover, title, badge, summary, source link, highlights, theme badges, metadata)
+- [x] 112. Implement all.html (sort dropdown, item grid, pagination)
+- [x] 113. Implement search.html (search input, results, no-results state)
 
 ### Phase 9: Static Site Generator (21 tasks)
 

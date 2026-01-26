@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Search{% endblock %}
+{% block description %}Search the knowledge library for books, articles, frameworks, and more.{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <span class="breadcrumbs-separator" aria-hidden="true">&gt;</span>
+    <span class="breadcrumbs-current" aria-current="page">Search</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+{# Search Header #}
+<header class="search-header mb-6">
+    <h1>Search Library</h1>
+    <p>Find content by title, keywords, or description.</p>
+</header>
+
+{# Search Input #}
+<div class="mb-8">
+    <input
+        type="search"
+        id="search-page-input"
+        class="search-input"
+        style="width: 100%; max-width: 600px; font-size: 1.125rem; padding: 1rem;"
+        placeholder="Type to search..."
+        aria-label="Search library"
+        autocomplete="off"
+    >
+</div>
+
+{# Results Count #}
+<div class="controls mb-6">
+    <span id="results-count" class="results-count"></span>
+    <span class="search-query">
+        Searching for: "<span id="search-query-display"></span>"
+    </span>
+</div>
+
+{# Search Results Grid - Populated by JavaScript #}
+<section id="search-results" class="card-grid">
+    {# Results will be rendered here by search.js #}
+</section>
+
+{# No Results State - Hidden by default #}
+<section id="no-results" class="no-results" style="display: none;">
+    <div class="no-results-icon">&#128269;</div>
+    <h3 class="no-results-title">No results found</h3>
+    <p class="no-results-message">
+        Try different keywords or check your spelling.
+    </p>
+</section>
+
+{# Initial State - Shown when no query #}
+<section id="initial-state" class="empty-state">
+    <div class="empty-state-icon">&#128270;</div>
+    <h3 class="empty-state-title">Start searching</h3>
+    <p class="empty-state-message">Enter at least 2 characters to search the library.</p>
+</section>
+
+{# Back Link #}
+<section class="text-center mt-8">
+    <a href="/" class="btn btn-secondary">Back to Home</a>
+</section>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    // Hide initial state once search results appear
+    document.getElementById('search-page-input').addEventListener('input', function(e) {
+        const initialState = document.getElementById('initial-state');
+        if (e.target.value.length >= 2) {
+            initialState.style.display = 'none';
+        } else if (e.target.value.length === 0) {
+            initialState.style.display = 'block';
+            document.getElementById('no-results').style.display = 'none';
+            document.getElementById('search-results').innerHTML = '';
+            document.getElementById('results-count').textContent = '';
+            document.getElementById('search-query-display').textContent = '';
+        }
+    });
+</script>
+{% endblock %}
