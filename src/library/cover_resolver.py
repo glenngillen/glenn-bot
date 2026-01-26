@@ -20,7 +20,9 @@ Caching:
 
 import json
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Optional, Union
+
+import requests
 
 
 class CoverResolver:
@@ -81,3 +83,40 @@ class CoverResolver:
         """
         with open(self.cache_file, "w") as f:
             json.dump(self.cache, f, indent=2)
+
+    def _fetch_cover_by_isbn(self, isbn: str) -> Optional[str]:
+        """Fetch a book cover URL from Open Library API by ISBN.
+
+        Constructs the Open Library cover URL and verifies the image exists
+        by making a HEAD request to check the response status and content type.
+
+        Args:
+            isbn: The book's ISBN (10 or 13 digits). Hyphens will be stripped.
+
+        Returns:
+            The cover URL if a valid image exists, None otherwise.
+            Returns None on 404, non-image content type, or network errors.
+        """
+        # Strip hyphens from ISBN
+        clean_isbn = isbn.replace("-", "")
+
+        # Construct the Open Library cover URL
+        url = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-L.jpg"
+
+        try:
+            # Make a HEAD request to verify the image exists
+            response = requests.head(url, timeout=10)
+
+            # Check if the request was successful
+            if response.status_code != 200:
+                return None
+
+            # Verify the content type is an image
+            content_type = response.headers.get("content-type", "")
+            if not content_type.startswith("image/"):
+                return None
+
+            return url
+
+        except (requests.RequestException, requests.Timeout):
+            return None
