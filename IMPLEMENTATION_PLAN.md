@@ -280,8 +280,8 @@ data/library-site/         # Generated site
 - [x] 154. Implement LibraryServer class in `src/library/server.py`
 - [x] 155. Write tests for serve() starting HTTP server
 - [x] 156. Implement serve() using http.server
-- [ ] 157. Write tests for port-in-use handling
-- [ ] 158. Implement port fallback logic
+- [x] 157. Write tests for port-in-use handling
+- [x] 158. Implement port fallback logic
 
 ### Phase 12: CLI Integration (14 tasks)
 
