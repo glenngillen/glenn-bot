@@ -142,7 +142,7 @@ data/library-site/         # Generated site
 - [x] 40. Implement load_themes() method
 - [x] 41. Write tests for save_assignments() persisting to assignments.json
 - [x] 42. Implement save_assignments() method
-- [ ] 43. Write tests for load_assignments() reading from assignments.json
+- [x] 43. Write tests for load_assignments() reading from assignments.json
 - [ ] 44. Implement load_assignments() method
 - [ ] 45. Write tests for _build_theme_generation_prompt() constructing LLM prompt
 - [ ] 46. Implement _build_theme_generation_prompt() method
