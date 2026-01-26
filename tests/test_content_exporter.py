@@ -219,7 +219,7 @@ class TestGenerateTitle:
 
         assert len(result) <= 53  # 50 chars + "..."
         assert result.endswith("...")
-        assert result == "This is a much longer piece of content that defin..."
+        assert result == "This is a much longer piece of content that defini..."
 
     def test_generate_title_no_ellipsis_for_short_content(self, mock_knowledge_base):
         """Content under 50 chars should not have ellipsis."""

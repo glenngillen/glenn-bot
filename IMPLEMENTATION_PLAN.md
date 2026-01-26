@@ -121,7 +121,7 @@ data/library-site/         # Generated site
 - [x] 22. Write tests for _infer_content_type() mapping (value->VALUE, framework->FRAMEWORK, web->WEB_CONTENT, preference->PREFERENCE, memory->MEMORY)
 - [x] 23. Implement _infer_content_type() content type mapping
 - [x] 24. Write tests for _generate_title() when metadata lacks 'name' (first 50 chars)
-- [ ] 25. Implement _generate_title() title generation
+- [x] 25. Implement _generate_title() title generation
 - [ ] 26. Write tests for _generate_summary() truncation (200 char limit with ellipsis)
 - [ ] 27. Implement _generate_summary() summary truncation logic
 - [ ] 28. Write tests for _extract_highlights() (key_points from values, steps from frameworks)
