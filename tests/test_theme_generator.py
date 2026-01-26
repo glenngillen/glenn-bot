@@ -5076,3 +5076,725 @@ class TestUpdateAssignments:
         assert "item-1" in prompt
         assert "Old Unassigned Book" in prompt
         assert "item-2" not in prompt
+
+
+class TestMiscellaneousTheme:
+    """Tests for 'Miscellaneous' catch-all theme for low confidence items.
+
+    Items that don't fit any theme well (all theme assignments have
+    confidence < 0.3) should be automatically assigned to a 'Miscellaneous'
+    catch-all theme.
+    """
+
+    def test_ensure_miscellaneous_theme_creates_theme_when_not_exists(
+        self, mock_ollama_client, temp_dir
+    ):
+        """ensure_miscellaneous_theme() should create the theme if it doesn't exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # No themes exist yet
+        generator.themes = []
+
+        result = generator.ensure_miscellaneous_theme()
+
+        # Should return the Miscellaneous theme
+        assert result is not None
+        assert result.id == "miscellaneous"
+        assert result.name == "Miscellaneous"
+
+        # Should be added to themes list
+        assert len(generator.themes) == 1
+        assert generator.themes[0].id == "miscellaneous"
+
+    def test_ensure_miscellaneous_theme_returns_existing_theme(
+        self, mock_ollama_client, temp_dir
+    ):
+        """ensure_miscellaneous_theme() should return existing theme if it already exists."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Miscellaneous theme already exists
+        existing = Theme(
+            id="miscellaneous",
+            name="Miscellaneous",
+            description="Existing description",
+            keywords=["misc"],
+            item_count=5,
+            created_at=datetime(2026, 1, 10, 10, 0, 0),
+            updated_at=datetime(2026, 1, 10, 10, 0, 0),
+        )
+        generator.themes = [existing]
+
+        result = generator.ensure_miscellaneous_theme()
+
+        # Should return the existing theme unchanged
+        assert result is existing
+        assert len(generator.themes) == 1
+        assert result.description == "Existing description"
+
+    def test_ensure_miscellaneous_theme_has_correct_properties(
+        self, mock_ollama_client, temp_dir
+    ):
+        """ensure_miscellaneous_theme() should create theme with correct properties."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+        generator.themes = []
+
+        result = generator.ensure_miscellaneous_theme()
+
+        assert result.id == "miscellaneous"
+        assert result.name == "Miscellaneous"
+        assert "catch-all" in result.description.lower() or "uncategorized" in result.description.lower()
+        assert result.item_count == 0
+        assert isinstance(result.created_at, datetime)
+        assert isinstance(result.updated_at, datetime)
+
+    def test_apply_miscellaneous_fallback_assigns_low_confidence_items(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should assign items with max confidence < 0.3 to Miscellaneous."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes (including Miscellaneous)
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all for uncategorized items",
+                keywords=["misc", "other"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Create items - one will have low confidence assignments only
+        items = [
+            LibraryItem(
+                id="low-confidence-item",
+                content_type=ContentType.MEMORY,
+                title="Random Memory",
+                summary="Doesn't fit any theme well",
+                full_content="Some random content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Existing assignments - all with confidence < 0.3
+        assignments = [
+            ThemeAssignment(
+                item_id="low-confidence-item",
+                theme_id="technology",
+                confidence=0.2,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.assignments = assignments
+
+        result = generator.apply_miscellaneous_fallback(items)
+
+        # Should return the new Miscellaneous assignment
+        assert len(result) == 1
+        assert result[0].item_id == "low-confidence-item"
+        assert result[0].theme_id == "miscellaneous"
+
+    def test_apply_miscellaneous_fallback_does_not_affect_high_confidence_items(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should not add Miscellaneous to items with high confidence."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Set up themes
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all for uncategorized items",
+                keywords=["misc", "other"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        items = [
+            LibraryItem(
+                id="high-confidence-item",
+                content_type=ContentType.BOOK,
+                title="Python Programming",
+                summary="A book about Python",
+                full_content="Python content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Existing assignment with high confidence (>= 0.3)
+        assignments = [
+            ThemeAssignment(
+                item_id="high-confidence-item",
+                theme_id="technology",
+                confidence=0.85,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.assignments = assignments
+
+        result = generator.apply_miscellaneous_fallback(items)
+
+        # Should not add any new assignments
+        assert len(result) == 0
+
+    def test_apply_miscellaneous_fallback_threshold_is_0_3(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should use 0.3 as the confidence threshold."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all",
+                keywords=["misc"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Create two items
+        items = [
+            LibraryItem(
+                id="item-at-threshold",
+                content_type=ContentType.MEMORY,
+                title="Item at Threshold",
+                summary="Exactly at 0.3 confidence",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-below-threshold",
+                content_type=ContentType.MEMORY,
+                title="Item Below Threshold",
+                summary="Below 0.3 confidence",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Item at threshold (0.3) should NOT get Miscellaneous
+        # Item below threshold (0.29) should get Miscellaneous
+        assignments = [
+            ThemeAssignment(
+                item_id="item-at-threshold",
+                theme_id="technology",
+                confidence=0.3,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="item-below-threshold",
+                theme_id="technology",
+                confidence=0.29,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.assignments = assignments
+
+        result = generator.apply_miscellaneous_fallback(items)
+
+        # Should only add Miscellaneous to item-below-threshold
+        assert len(result) == 1
+        assert result[0].item_id == "item-below-threshold"
+        assert result[0].theme_id == "miscellaneous"
+
+    def test_apply_miscellaneous_fallback_creates_theme_if_not_exists(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should create Miscellaneous theme if it doesn't exist."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        # Only one theme, no Miscellaneous
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        items = [
+            LibraryItem(
+                id="low-confidence-item",
+                content_type=ContentType.MEMORY,
+                title="Random Memory",
+                summary="Doesn't fit any theme",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        assignments = [
+            ThemeAssignment(
+                item_id="low-confidence-item",
+                theme_id="technology",
+                confidence=0.15,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.assignments = assignments
+
+        result = generator.apply_miscellaneous_fallback(items)
+
+        # Should create Miscellaneous theme
+        assert any(t.id == "miscellaneous" for t in generator.themes)
+
+        # Should add assignment to Miscellaneous
+        assert len(result) == 1
+        assert result[0].theme_id == "miscellaneous"
+
+    def test_apply_miscellaneous_fallback_adds_assignments_to_instance(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should add new assignments to self.assignments."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all",
+                keywords=["misc"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        items = [
+            LibraryItem(
+                id="low-confidence-item",
+                content_type=ContentType.MEMORY,
+                title="Random Memory",
+                summary="Doesn't fit any theme",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        initial_assignment = ThemeAssignment(
+            item_id="low-confidence-item",
+            theme_id="technology",
+            confidence=0.1,
+            assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+        )
+        generator.assignments = [initial_assignment]
+
+        generator.apply_miscellaneous_fallback(items)
+
+        # Should have both the original and the new Miscellaneous assignment
+        assert len(generator.assignments) == 2
+        misc_assignments = [a for a in generator.assignments if a.theme_id == "miscellaneous"]
+        assert len(misc_assignments) == 1
+
+    def test_apply_miscellaneous_fallback_handles_items_without_assignments(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should assign items with no assignments to Miscellaneous."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all",
+                keywords=["misc"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        # Item has no assignments at all
+        items = [
+            LibraryItem(
+                id="unassigned-item",
+                content_type=ContentType.MEMORY,
+                title="Unassigned Item",
+                summary="Has no assignments",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        generator.assignments = []
+
+        result = generator.apply_miscellaneous_fallback(items)
+
+        # Should assign to Miscellaneous
+        assert len(result) == 1
+        assert result[0].item_id == "unassigned-item"
+        assert result[0].theme_id == "miscellaneous"
+
+    def test_apply_miscellaneous_fallback_uses_low_confidence_score(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should use an appropriate confidence score for Miscellaneous."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all",
+                keywords=["misc"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        items = [
+            LibraryItem(
+                id="unassigned-item",
+                content_type=ContentType.MEMORY,
+                title="Unassigned Item",
+                summary="Has no assignments",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+        generator.assignments = []
+
+        result = generator.apply_miscellaneous_fallback(items)
+
+        # Miscellaneous assignments should have a low but non-zero confidence
+        # (indicating it's a fallback, not a strong match)
+        assert len(result) == 1
+        assert result[0].confidence > 0
+        assert result[0].confidence < 0.3
+
+    def test_apply_miscellaneous_fallback_skips_items_already_in_miscellaneous(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should not re-assign items already in Miscellaneous."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all",
+                keywords=["misc"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        items = [
+            LibraryItem(
+                id="already-misc-item",
+                content_type=ContentType.MEMORY,
+                title="Already Miscellaneous",
+                summary="Already assigned to miscellaneous",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # Item already has low confidence tech assignment AND Miscellaneous
+        assignments = [
+            ThemeAssignment(
+                item_id="already-misc-item",
+                theme_id="technology",
+                confidence=0.1,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="already-misc-item",
+                theme_id="miscellaneous",
+                confidence=0.2,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.assignments = assignments
+
+        result = generator.apply_miscellaneous_fallback(items)
+
+        # Should not add duplicate Miscellaneous assignment
+        assert len(result) == 0
+
+    def test_apply_miscellaneous_fallback_handles_empty_items_list(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should handle empty items list gracefully."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all",
+                keywords=["misc"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+        generator.assignments = []
+
+        result = generator.apply_miscellaneous_fallback([])
+
+        assert result == []
+
+    def test_apply_miscellaneous_fallback_considers_max_confidence_across_all_themes(
+        self, mock_ollama_client, temp_dir
+    ):
+        """apply_miscellaneous_fallback() should use the max confidence across all themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="business",
+                name="Business",
+                description="Business topics",
+                keywords=["business"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="miscellaneous",
+                name="Miscellaneous",
+                description="Catch-all",
+                keywords=["misc"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.themes = themes
+
+        items = [
+            LibraryItem(
+                id="multi-low-item",
+                content_type=ContentType.MEMORY,
+                title="Multi Low Confidence",
+                summary="Low confidence for multiple themes",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="one-high-item",
+                content_type=ContentType.BOOK,
+                title="One High Confidence",
+                summary="Low for one, high for another",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        # multi-low-item: all assignments below threshold
+        # one-high-item: one assignment below threshold, one above
+        assignments = [
+            ThemeAssignment(
+                item_id="multi-low-item",
+                theme_id="technology",
+                confidence=0.15,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="multi-low-item",
+                theme_id="business",
+                confidence=0.2,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="one-high-item",
+                theme_id="technology",
+                confidence=0.1,
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            ThemeAssignment(
+                item_id="one-high-item",
+                theme_id="business",
+                confidence=0.75,  # High confidence for this one
+                assigned_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+        generator.assignments = assignments
+
+        result = generator.apply_miscellaneous_fallback(items)
+
+        # Only multi-low-item should get Miscellaneous
+        assert len(result) == 1
+        assert result[0].item_id == "multi-low-item"
+        assert result[0].theme_id == "miscellaneous"
