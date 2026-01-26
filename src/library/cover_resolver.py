@@ -24,6 +24,8 @@ from typing import Any, Optional, Union
 
 import requests
 
+from src.library.models import ContentType
+
 
 class CoverResolver:
     """Resolves cover images for library items.
@@ -247,3 +249,23 @@ class CoverResolver:
 
         except (requests.RequestException, requests.Timeout):
             return None
+
+    def get_placeholder_url(self, content_type: ContentType) -> str:
+        """Get the placeholder image URL for a given content type.
+
+        Returns a path to an SVG placeholder image specific to the content type.
+        Each of the 10 content types has its own distinct placeholder image.
+
+        Args:
+            content_type: The ContentType enum value for the item.
+
+        Returns:
+            A string path to the placeholder SVG image within the
+            assets/images/placeholders directory. The path contains
+            the content type value (e.g., "book", "article") and ends with .svg.
+        """
+        # Use the content type's value (e.g., "book", "web_content") as filename
+        filename = f"{content_type.value}.svg"
+
+        # Return the path relative to placeholders directory
+        return f"assets/images/placeholders/{filename}"

@@ -179,7 +179,7 @@ data/library-site/         # Generated site
 - [x] 74. Write tests for _fetch_cover_from_google_books() API call
 - [x] 75. Implement _fetch_cover_from_google_books() fallback
 - [x] 76. Write tests for get_placeholder_url() (10 distinct placeholders)
-- [ ] 77. Implement get_placeholder_url() method
+- [x] 77. Implement get_placeholder_url() method
 - [ ] 78. Write tests for resolve_cover() orchestration (cache -> API -> placeholder)
 - [ ] 79. Implement resolve_cover() with fallback chain
 - [ ] 80. Write tests for resolve_all_covers() batch processing
