@@ -115,6 +115,44 @@ class Theme:
     created_at: datetime  # When the theme was created
     updated_at: datetime  # When the theme was last updated
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the Theme to a dictionary for serialization.
+
+        Returns:
+            A dictionary with all fields serialized. Datetime fields
+            are converted to ISO format strings.
+        """
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "keywords": self.keywords,
+            "item_count": self.item_count,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Theme":
+        """Create a Theme from a dictionary.
+
+        Args:
+            data: A dictionary with Theme fields. The created_at and
+                updated_at fields should be ISO format datetime strings.
+
+        Returns:
+            A new Theme instance.
+        """
+        return cls(
+            id=data["id"],
+            name=data["name"],
+            description=data["description"],
+            keywords=data["keywords"],
+            item_count=data["item_count"],
+            created_at=datetime.fromisoformat(data["created_at"]),
+            updated_at=datetime.fromisoformat(data["updated_at"]),
+        )
+
 
 # Placeholder - implementation will be added following TDD
 ThemeAssignment = None
