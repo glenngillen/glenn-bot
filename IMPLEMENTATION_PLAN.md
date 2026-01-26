@@ -208,11 +208,11 @@ data/library-site/         # Generated site
   - Background: #FAFAFA, Cards: #FFFFFF
   - Text: #1A1A1A (primary), #666666 (secondary)
   - Accent: #2563EB
-- [ ] 97. Implement responsive grid CSS (4-col @1024px+, 3-col @768px, 1-2 col <768px)
-- [ ] 98. Implement badge colors for 10 content types
-- [ ] 99. Implement highlight/blockquote styling (border-left 4px accent)
-- [ ] 100. Create `src/library/assets/js/` directory
-- [ ] 101. Implement search.js with Fuse.js CDN (lazy-load, 300ms debounce)
+- [x] 97. Implement responsive grid CSS (4-col @1024px+, 3-col @768px, 1-2 col <768px)
+- [x] 98. Implement badge colors for 10 content types
+- [x] 99. Implement highlight/blockquote styling (border-left 4px accent)
+- [x] 100. Create `src/library/assets/js/` directory
+- [x] 101. Implement search.js with Fuse.js CDN (lazy-load, 300ms debounce)
 - [ ] 102. Implement sort functionality (Recent, A-Z, By Type)
 - [ ] 103. Implement pagination/load-more (50 items per page)
 - [ ] 104. Create `src/library/assets/images/placeholders/` directory
