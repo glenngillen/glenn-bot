@@ -191,15 +191,15 @@ data/library-site/         # Generated site
 
 - [x] 84. Create test file `tests/test_search_indexer.py`
 - [x] 85. Write tests for SearchIndexer initialization
-- [ ] 86. Implement SearchIndexer class in `src/library/search_indexer.py`
+- [x] 86. Implement SearchIndexer class in `src/library/search_indexer.py`
 - [x] 87. Write tests for _extract_keywords() from themes and content
-- [ ] 88. Implement _extract_keywords() method
+- [x] 88. Implement _extract_keywords() method
 - [x] 89. Write tests for _build_search_item() creating index entry
-- [ ] 90. Implement _build_search_item() method
+- [x] 90. Implement _build_search_item() method
 - [x] 91. Write tests for build_index() returning search items
-- [ ] 92. Implement build_index() method
+- [x] 92. Implement build_index() method
 - [x] 93. Write tests for write_index() outputting search-index.json
-- [ ] 94. Implement write_index() to generate search-index.json
+- [x] 94. Implement write_index() to generate search-index.json
 
 ### Phase 7: Static Assets (11 tasks)
 
