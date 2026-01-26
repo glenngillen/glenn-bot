@@ -2263,3 +2263,800 @@ These themes cover the main topics in your knowledge base.'''
 
         assert len(result) == 1
         assert result[0].id == "personal-growth"
+
+
+class TestBuildAssignmentPrompt:
+    """Tests for _build_assignment_prompt() method that constructs the prompt for item-to-theme assignment."""
+
+    def test_build_assignment_prompt_returns_string(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should return a string."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement and learning",
+                keywords=["growth", "learning", "habits"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Atomic Habits",
+                summary="Building good habits for life",
+                full_content="Full content here",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert isinstance(prompt, str)
+
+    def test_build_assignment_prompt_includes_theme_names(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include theme names in the prompt."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement topics",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "Personal Growth" in prompt
+        assert "Technology" in prompt
+
+    def test_build_assignment_prompt_includes_theme_ids(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include theme IDs for assignment output."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="systems-thinking",
+                name="Systems Thinking",
+                description="Understanding complex systems",
+                keywords=["systems"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "systems-thinking" in prompt
+
+    def test_build_assignment_prompt_includes_theme_descriptions(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include theme descriptions to help LLM understand context."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="business",
+                name="Business",
+                description="Entrepreneurship, management, and strategy",
+                keywords=["business", "strategy"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "Entrepreneurship, management, and strategy" in prompt
+
+    def test_build_assignment_prompt_includes_theme_keywords(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include theme keywords for better matching."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="communication",
+                name="Communication",
+                description="Communication skills",
+                keywords=["writing", "speaking", "relationships"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        # Keywords should appear in the prompt
+        assert "writing" in prompt.lower() or "speaking" in prompt.lower() or "relationships" in prompt.lower()
+
+    def test_build_assignment_prompt_includes_item_ids(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include item IDs for assignment output."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="book-atomic-habits",
+                content_type=ContentType.BOOK,
+                title="Atomic Habits",
+                summary="Building good habits",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "book-atomic-habits" in prompt
+
+    def test_build_assignment_prompt_includes_item_titles(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include item titles in the prompt."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="The Art of Learning",
+                summary="How to master any skill",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "The Art of Learning" in prompt
+
+    def test_build_assignment_prompt_includes_item_summaries(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include item summaries in the prompt."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.ARTICLE,
+                title="AI Trends",
+                summary="Exploring the latest developments in artificial intelligence",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "Exploring the latest developments in artificial intelligence" in prompt
+
+    def test_build_assignment_prompt_includes_item_content_types(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include item content types in the prompt."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.FRAMEWORK,
+                title="Decision Framework",
+                summary="A framework for making decisions",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "framework" in prompt.lower()
+
+    def test_build_assignment_prompt_requests_json_format(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should request JSON output format."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "json" in prompt.lower()
+
+    def test_build_assignment_prompt_requests_confidence_scores(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should request confidence scores for each assignment."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "confidence" in prompt.lower()
+
+    def test_build_assignment_prompt_requests_item_id_in_output(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should request item_id in the output format."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "item_id" in prompt.lower()
+
+    def test_build_assignment_prompt_requests_theme_id_in_output(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should request theme_id in the output format."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        assert "theme_id" in prompt.lower()
+
+    def test_build_assignment_prompt_with_multiple_items(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should handle multiple items correctly."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Atomic Habits",
+                summary="Building good habits",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-2",
+                content_type=ContentType.ARTICLE,
+                title="Deep Work",
+                summary="Focused work strategies",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 16, 10, 0, 0),
+                highlights=[],
+            ),
+            LibraryItem(
+                id="item-3",
+                content_type=ContentType.FRAMEWORK,
+                title="Eisenhower Matrix",
+                summary="Prioritization framework",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 17, 10, 0, 0),
+                highlights=[],
+            ),
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        # All items should be in the prompt
+        assert "Atomic Habits" in prompt
+        assert "Deep Work" in prompt
+        assert "Eisenhower Matrix" in prompt
+
+    def test_build_assignment_prompt_with_multiple_themes(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should include all available themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement and learning",
+                keywords=["growth", "learning"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Software and tech innovations",
+                keywords=["software", "tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="business",
+                name="Business",
+                description="Entrepreneurship and strategy",
+                keywords=["business", "strategy"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        # All themes should be listed
+        assert "Personal Growth" in prompt
+        assert "Technology" in prompt
+        assert "Business" in prompt
+
+    def test_build_assignment_prompt_with_empty_items_list(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should handle empty items list gracefully."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = []
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        # Should still return a valid string
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+
+    def test_build_assignment_prompt_with_empty_themes_list(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should handle empty themes list gracefully."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = []
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        # Should still return a valid string
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+
+    def test_build_assignment_prompt_allows_multiple_theme_assignments(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should indicate that items can be assigned to multiple themes."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+            Theme(
+                id="technology",
+                name="Technology",
+                description="Tech topics",
+                keywords=["tech"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            ),
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        # Should mention multiple themes or assignments
+        assert "multiple" in prompt.lower() or "more than one" in prompt.lower() or "themes" in prompt.lower()
+
+    def test_build_assignment_prompt_specifies_confidence_range(self, mock_ollama_client, temp_dir):
+        """_build_assignment_prompt() should specify that confidence should be between 0.0 and 1.0."""
+        from src.library.theme_generator import ThemeGenerator
+
+        data_dir = temp_dir / "library"
+        generator = ThemeGenerator(ollama_client=mock_ollama_client, data_dir=data_dir)
+
+        themes = [
+            Theme(
+                id="personal-growth",
+                name="Personal Growth",
+                description="Self-improvement",
+                keywords=["growth"],
+                item_count=0,
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                updated_at=datetime(2026, 1, 15, 10, 0, 0),
+            )
+        ]
+
+        items = [
+            LibraryItem(
+                id="item-1",
+                content_type=ContentType.BOOK,
+                title="Test Book",
+                summary="A test book",
+                full_content="Content",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2026, 1, 15, 10, 0, 0),
+                highlights=[],
+            )
+        ]
+
+        prompt = generator._build_assignment_prompt(items, themes)
+
+        # Should mention the confidence score range
+        assert ("0" in prompt and "1" in prompt) or "0.0" in prompt or "1.0" in prompt
