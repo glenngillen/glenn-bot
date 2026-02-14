@@ -1,0 +1,1305 @@
+"""Tests for library data models."""
+
+import pytest
+from datetime import datetime
+
+
+class TestContentType:
+    """Tests for the ContentType enum."""
+
+    def test_content_type_has_book(self):
+        """ContentType should have a BOOK value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'BOOK')
+        assert ContentType.BOOK.value == "book"
+
+    def test_content_type_has_article(self):
+        """ContentType should have an ARTICLE value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'ARTICLE')
+        assert ContentType.ARTICLE.value == "article"
+
+    def test_content_type_has_framework(self):
+        """ContentType should have a FRAMEWORK value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'FRAMEWORK')
+        assert ContentType.FRAMEWORK.value == "framework"
+
+    def test_content_type_has_value(self):
+        """ContentType should have a VALUE value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'VALUE')
+        assert ContentType.VALUE.value == "value"
+
+    def test_content_type_has_preference(self):
+        """ContentType should have a PREFERENCE value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'PREFERENCE')
+        assert ContentType.PREFERENCE.value == "preference"
+
+    def test_content_type_has_memory(self):
+        """ContentType should have a MEMORY value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'MEMORY')
+        assert ContentType.MEMORY.value == "memory"
+
+    def test_content_type_has_insight(self):
+        """ContentType should have an INSIGHT value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'INSIGHT')
+        assert ContentType.INSIGHT.value == "insight"
+
+    def test_content_type_has_goal(self):
+        """ContentType should have a GOAL value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'GOAL')
+        assert ContentType.GOAL.value == "goal"
+
+    def test_content_type_has_skill(self):
+        """ContentType should have a SKILL value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'SKILL')
+        assert ContentType.SKILL.value == "skill"
+
+    def test_content_type_has_web_content(self):
+        """ContentType should have a WEB_CONTENT value."""
+        from src.library.models import ContentType
+        assert hasattr(ContentType, 'WEB_CONTENT')
+        assert ContentType.WEB_CONTENT.value == "web_content"
+
+    def test_content_type_has_exactly_ten_types(self):
+        """ContentType should have exactly 10 content types."""
+        from src.library.models import ContentType
+        assert len(ContentType) == 10
+
+    def test_content_type_values_are_strings(self):
+        """All ContentType values should be strings."""
+        from src.library.models import ContentType
+        for content_type in ContentType:
+            assert isinstance(content_type.value, str)
+
+    def test_content_type_can_be_created_from_string(self):
+        """ContentType should be creatable from string value."""
+        from src.library.models import ContentType
+        assert ContentType("book") == ContentType.BOOK
+        assert ContentType("framework") == ContentType.FRAMEWORK
+        assert ContentType("web_content") == ContentType.WEB_CONTENT
+
+
+class TestLibraryItem:
+    """Tests for the LibraryItem dataclass."""
+
+    def test_library_item_has_required_fields(self):
+        """LibraryItem should have all required fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test book summary",
+            full_content="Full content of the test book goes here.",
+            source_url="https://example.com/book",
+            cover_image_url="https://example.com/cover.jpg",
+            metadata={"author": "Test Author"},
+            themes=["theme-1", "theme-2"],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=["Key insight 1", "Key insight 2"],
+        )
+
+        assert item.id == "test-123"
+        assert item.content_type == ContentType.BOOK
+        assert item.title == "Test Book"
+        assert item.summary == "A test book summary"
+        assert item.full_content == "Full content of the test book goes here."
+        assert item.source_url == "https://example.com/book"
+        assert item.cover_image_url == "https://example.com/cover.jpg"
+        assert item.metadata == {"author": "Test Author"}
+        assert item.themes == ["theme-1", "theme-2"]
+        assert item.created_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert item.highlights == ["Key insight 1", "Key insight 2"]
+
+    def test_library_item_source_url_is_optional(self):
+        """LibraryItem should allow None for source_url."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.MEMORY,
+            title="Test Memory",
+            summary="A memory without a source",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        assert item.source_url is None
+
+    def test_library_item_cover_image_url_is_optional(self):
+        """LibraryItem should allow None for cover_image_url."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.INSIGHT,
+            title="Test Insight",
+            summary="An insight without a cover",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        assert item.cover_image_url is None
+
+    def test_library_item_themes_can_be_empty(self):
+        """LibraryItem should allow an empty themes list."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.VALUE,
+            title="Test Value",
+            summary="A value with no themes",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        assert item.themes == []
+
+    def test_library_item_can_have_multiple_themes(self):
+        """LibraryItem should support multiple themes."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.FRAMEWORK,
+            title="Test Framework",
+            summary="A framework with multiple themes",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=["theme-1", "theme-2", "theme-3"],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        assert len(item.themes) == 3
+        assert "theme-1" in item.themes
+        assert "theme-2" in item.themes
+        assert "theme-3" in item.themes
+
+    def test_library_item_highlights_can_be_empty(self):
+        """LibraryItem should allow an empty highlights list."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.PREFERENCE,
+            title="Test Preference",
+            summary="A preference without highlights",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        assert item.highlights == []
+
+    def test_library_item_metadata_can_contain_various_types(self):
+        """LibraryItem metadata should accept various value types."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A book with rich metadata",
+            full_content="Full content here.",
+            source_url="https://example.com",
+            cover_image_url=None,
+            metadata={
+                "author": "Test Author",
+                "year": 2024,
+                "tags": ["programming", "python"],
+                "is_favorite": True,
+            },
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        assert item.metadata["author"] == "Test Author"
+        assert item.metadata["year"] == 2024
+        assert item.metadata["tags"] == ["programming", "python"]
+        assert item.metadata["is_favorite"] is True
+
+    def test_library_item_content_type_accepts_enum_value(self):
+        """LibraryItem content_type should accept ContentType enum values."""
+        from src.library.models import LibraryItem, ContentType
+
+        for content_type in ContentType:
+            item = LibraryItem(
+                id="test-123",
+                content_type=content_type,
+                title="Test Item",
+                summary="Test summary",
+                full_content="Full content here.",
+                source_url=None,
+                cover_image_url=None,
+                metadata={},
+                themes=[],
+                created_at=datetime(2024, 1, 15, 10, 30, 0),
+                highlights=[],
+            )
+            assert item.content_type == content_type
+
+    def test_library_item_is_dataclass(self):
+        """LibraryItem should be a dataclass."""
+        from dataclasses import is_dataclass
+        from src.library.models import LibraryItem
+
+        assert is_dataclass(LibraryItem)
+
+
+class TestLibraryItemSerialization:
+    """Tests for LibraryItem serialization methods (to_dict and from_dict)."""
+
+    def test_to_dict_returns_dictionary(self):
+        """to_dict should return a dictionary."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url="https://example.com",
+            cover_image_url="https://example.com/cover.jpg",
+            metadata={"author": "Test Author"},
+            themes=["theme-1"],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=["Highlight 1"],
+        )
+
+        result = item.to_dict()
+        assert isinstance(result, dict)
+
+    def test_to_dict_serializes_all_fields(self):
+        """to_dict should include all LibraryItem fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url="https://example.com",
+            cover_image_url="https://example.com/cover.jpg",
+            metadata={"author": "Test Author"},
+            themes=["theme-1", "theme-2"],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=["Highlight 1", "Highlight 2"],
+        )
+
+        result = item.to_dict()
+
+        assert result["id"] == "test-123"
+        assert result["title"] == "Test Book"
+        assert result["summary"] == "A test summary"
+        assert result["full_content"] == "Full content here."
+        assert result["source_url"] == "https://example.com"
+        assert result["cover_image_url"] == "https://example.com/cover.jpg"
+        assert result["metadata"] == {"author": "Test Author"}
+        assert result["themes"] == ["theme-1", "theme-2"]
+        assert result["highlights"] == ["Highlight 1", "Highlight 2"]
+
+    def test_to_dict_serializes_content_type_as_string(self):
+        """to_dict should convert ContentType enum to string value."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.FRAMEWORK,
+            title="Test Framework",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        result = item.to_dict()
+
+        assert result["content_type"] == "framework"
+        assert isinstance(result["content_type"], str)
+
+    def test_to_dict_serializes_datetime_as_iso_string(self):
+        """to_dict should convert datetime to ISO format string."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.MEMORY,
+            title="Test Memory",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        result = item.to_dict()
+
+        assert result["created_at"] == "2024-01-15T10:30:00"
+        assert isinstance(result["created_at"], str)
+
+    def test_to_dict_preserves_none_values(self):
+        """to_dict should preserve None values for optional fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        item = LibraryItem(
+            id="test-123",
+            content_type=ContentType.INSIGHT,
+            title="Test Insight",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url=None,
+            cover_image_url=None,
+            metadata={},
+            themes=[],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=[],
+        )
+
+        result = item.to_dict()
+
+        assert result["source_url"] is None
+        assert result["cover_image_url"] is None
+
+    def test_from_dict_returns_library_item(self):
+        """from_dict should return a LibraryItem instance."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "book",
+            "title": "Test Book",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": "https://example.com",
+            "cover_image_url": "https://example.com/cover.jpg",
+            "metadata": {"author": "Test Author"},
+            "themes": ["theme-1"],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": ["Highlight 1"],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert isinstance(result, LibraryItem)
+
+    def test_from_dict_deserializes_all_fields(self):
+        """from_dict should correctly set all LibraryItem fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "book",
+            "title": "Test Book",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": "https://example.com",
+            "cover_image_url": "https://example.com/cover.jpg",
+            "metadata": {"author": "Test Author"},
+            "themes": ["theme-1", "theme-2"],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": ["Highlight 1", "Highlight 2"],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert result.id == "test-123"
+        assert result.title == "Test Book"
+        assert result.summary == "A test summary"
+        assert result.full_content == "Full content here."
+        assert result.source_url == "https://example.com"
+        assert result.cover_image_url == "https://example.com/cover.jpg"
+        assert result.metadata == {"author": "Test Author"}
+        assert result.themes == ["theme-1", "theme-2"]
+        assert result.highlights == ["Highlight 1", "Highlight 2"]
+
+    def test_from_dict_deserializes_content_type_from_string(self):
+        """from_dict should convert string to ContentType enum."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "framework",
+            "title": "Test Framework",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": None,
+            "cover_image_url": None,
+            "metadata": {},
+            "themes": [],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": [],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert result.content_type == ContentType.FRAMEWORK
+        assert isinstance(result.content_type, ContentType)
+
+    def test_from_dict_deserializes_datetime_from_iso_string(self):
+        """from_dict should convert ISO string to datetime."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "memory",
+            "title": "Test Memory",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": None,
+            "cover_image_url": None,
+            "metadata": {},
+            "themes": [],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": [],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert result.created_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert isinstance(result.created_at, datetime)
+
+    def test_from_dict_handles_none_optional_fields(self):
+        """from_dict should correctly handle None values for optional fields."""
+        from src.library.models import LibraryItem, ContentType
+
+        data = {
+            "id": "test-123",
+            "content_type": "insight",
+            "title": "Test Insight",
+            "summary": "A test summary",
+            "full_content": "Full content here.",
+            "source_url": None,
+            "cover_image_url": None,
+            "metadata": {},
+            "themes": [],
+            "created_at": "2024-01-15T10:30:00",
+            "highlights": [],
+        }
+
+        result = LibraryItem.from_dict(data)
+
+        assert result.source_url is None
+        assert result.cover_image_url is None
+
+    def test_roundtrip_to_dict_from_dict(self):
+        """Converting to_dict then from_dict should produce equivalent object."""
+        from src.library.models import LibraryItem, ContentType
+
+        original = LibraryItem(
+            id="test-123",
+            content_type=ContentType.BOOK,
+            title="Test Book",
+            summary="A test summary",
+            full_content="Full content here.",
+            source_url="https://example.com",
+            cover_image_url="https://example.com/cover.jpg",
+            metadata={"author": "Test Author", "year": 2024},
+            themes=["theme-1", "theme-2"],
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            highlights=["Highlight 1", "Highlight 2"],
+        )
+
+        data = original.to_dict()
+        reconstructed = LibraryItem.from_dict(data)
+
+        assert reconstructed.id == original.id
+        assert reconstructed.content_type == original.content_type
+        assert reconstructed.title == original.title
+        assert reconstructed.summary == original.summary
+        assert reconstructed.full_content == original.full_content
+        assert reconstructed.source_url == original.source_url
+        assert reconstructed.cover_image_url == original.cover_image_url
+        assert reconstructed.metadata == original.metadata
+        assert reconstructed.themes == original.themes
+        assert reconstructed.created_at == original.created_at
+        assert reconstructed.highlights == original.highlights
+
+    def test_from_dict_handles_all_content_types(self):
+        """from_dict should handle all ContentType values."""
+        from src.library.models import LibraryItem, ContentType
+
+        content_type_strings = [
+            "book", "article", "framework", "value", "preference",
+            "memory", "insight", "goal", "skill", "web_content"
+        ]
+
+        for type_str in content_type_strings:
+            data = {
+                "id": "test-123",
+                "content_type": type_str,
+                "title": "Test Item",
+                "summary": "A test summary",
+                "full_content": "Full content here.",
+                "source_url": None,
+                "cover_image_url": None,
+                "metadata": {},
+                "themes": [],
+                "created_at": "2024-01-15T10:30:00",
+                "highlights": [],
+            }
+
+            result = LibraryItem.from_dict(data)
+            assert result.content_type == ContentType(type_str)
+
+
+class TestTheme:
+    """Tests for the Theme dataclass."""
+
+    def test_theme_has_required_fields(self):
+        """Theme should have all required fields."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="systems-thinking",
+            name="Systems Thinking",
+            description="Mental models for understanding complex systems",
+            keywords=["systems", "feedback", "complexity", "mental models"],
+            item_count=15,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        assert theme.id == "systems-thinking"
+        assert theme.name == "Systems Thinking"
+        assert theme.description == "Mental models for understanding complex systems"
+        assert theme.keywords == ["systems", "feedback", "complexity", "mental models"]
+        assert theme.item_count == 15
+        assert theme.created_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert theme.updated_at == datetime(2024, 1, 20, 14, 0, 0)
+
+    def test_theme_id_is_string(self):
+        """Theme id should be a string (slug format)."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="personal-growth",
+            name="Personal Growth",
+            description="Self-improvement and learning",
+            keywords=["growth", "learning"],
+            item_count=10,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert isinstance(theme.id, str)
+
+    def test_theme_keywords_can_be_empty(self):
+        """Theme should allow an empty keywords list."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="miscellaneous",
+            name="Miscellaneous",
+            description="Uncategorized content",
+            keywords=[],
+            item_count=5,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert theme.keywords == []
+
+    def test_theme_item_count_can_be_zero(self):
+        """Theme should allow item_count of zero (new/empty theme)."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="new-theme",
+            name="New Theme",
+            description="A newly created theme with no items yet",
+            keywords=["new"],
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert theme.item_count == 0
+
+    def test_theme_updated_at_can_equal_created_at(self):
+        """Theme updated_at can be the same as created_at (never updated)."""
+        from src.library.models import Theme
+
+        same_time = datetime(2024, 1, 15, 10, 30, 0)
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=[],
+            item_count=0,
+            created_at=same_time,
+            updated_at=same_time,
+        )
+
+        assert theme.created_at == theme.updated_at
+
+    def test_theme_updated_at_can_be_after_created_at(self):
+        """Theme updated_at should be able to be after created_at."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=[],
+            item_count=10,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 2, 20, 15, 45, 0),
+        )
+
+        assert theme.updated_at > theme.created_at
+
+    def test_theme_is_dataclass(self):
+        """Theme should be a dataclass."""
+        from dataclasses import is_dataclass
+        from src.library.models import Theme
+
+        assert is_dataclass(Theme)
+
+    def test_theme_keywords_preserves_order(self):
+        """Theme keywords should preserve insertion order."""
+        from src.library.models import Theme
+
+        keywords = ["first", "second", "third", "fourth"]
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=keywords,
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert theme.keywords == keywords
+        assert theme.keywords[0] == "first"
+        assert theme.keywords[-1] == "fourth"
+
+
+class TestThemeSerialization:
+    """Tests for Theme serialization methods (to_dict and from_dict)."""
+
+    def test_to_dict_returns_dictionary(self):
+        """to_dict should return a dictionary."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="systems-thinking",
+            name="Systems Thinking",
+            description="Mental models for understanding complex systems",
+            keywords=["systems", "feedback", "complexity"],
+            item_count=15,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        result = theme.to_dict()
+        assert isinstance(result, dict)
+
+    def test_to_dict_serializes_all_fields(self):
+        """to_dict should include all Theme fields."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="systems-thinking",
+            name="Systems Thinking",
+            description="Mental models for understanding complex systems",
+            keywords=["systems", "feedback", "complexity"],
+            item_count=15,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["id"] == "systems-thinking"
+        assert result["name"] == "Systems Thinking"
+        assert result["description"] == "Mental models for understanding complex systems"
+        assert result["keywords"] == ["systems", "feedback", "complexity"]
+        assert result["item_count"] == 15
+
+    def test_to_dict_serializes_created_at_as_iso_string(self):
+        """to_dict should convert created_at datetime to ISO format string."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=[],
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["created_at"] == "2024-01-15T10:30:00"
+        assert isinstance(result["created_at"], str)
+
+    def test_to_dict_serializes_updated_at_as_iso_string(self):
+        """to_dict should convert updated_at datetime to ISO format string."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="test-theme",
+            name="Test Theme",
+            description="A test theme",
+            keywords=[],
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["updated_at"] == "2024-01-20T14:00:00"
+        assert isinstance(result["updated_at"], str)
+
+    def test_to_dict_preserves_empty_keywords(self):
+        """to_dict should preserve empty keywords list."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="miscellaneous",
+            name="Miscellaneous",
+            description="Uncategorized content",
+            keywords=[],
+            item_count=5,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["keywords"] == []
+
+    def test_to_dict_preserves_zero_item_count(self):
+        """to_dict should preserve item_count of zero."""
+        from src.library.models import Theme
+
+        theme = Theme(
+            id="new-theme",
+            name="New Theme",
+            description="A newly created theme",
+            keywords=["new"],
+            item_count=0,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = theme.to_dict()
+
+        assert result["item_count"] == 0
+
+    def test_from_dict_returns_theme(self):
+        """from_dict should return a Theme instance."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "systems-thinking",
+            "name": "Systems Thinking",
+            "description": "Mental models for understanding complex systems",
+            "keywords": ["systems", "feedback", "complexity"],
+            "item_count": 15,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-20T14:00:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert isinstance(result, Theme)
+
+    def test_from_dict_deserializes_all_fields(self):
+        """from_dict should correctly set all Theme fields."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "systems-thinking",
+            "name": "Systems Thinking",
+            "description": "Mental models for understanding complex systems",
+            "keywords": ["systems", "feedback", "complexity"],
+            "item_count": 15,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-20T14:00:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.id == "systems-thinking"
+        assert result.name == "Systems Thinking"
+        assert result.description == "Mental models for understanding complex systems"
+        assert result.keywords == ["systems", "feedback", "complexity"]
+        assert result.item_count == 15
+
+    def test_from_dict_deserializes_created_at_from_iso_string(self):
+        """from_dict should convert created_at ISO string to datetime."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "test-theme",
+            "name": "Test Theme",
+            "description": "A test theme",
+            "keywords": [],
+            "item_count": 0,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-20T14:00:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.created_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert isinstance(result.created_at, datetime)
+
+    def test_from_dict_deserializes_updated_at_from_iso_string(self):
+        """from_dict should convert updated_at ISO string to datetime."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "test-theme",
+            "name": "Test Theme",
+            "description": "A test theme",
+            "keywords": [],
+            "item_count": 0,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-20T14:00:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.updated_at == datetime(2024, 1, 20, 14, 0, 0)
+        assert isinstance(result.updated_at, datetime)
+
+    def test_from_dict_handles_empty_keywords(self):
+        """from_dict should correctly handle empty keywords list."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "miscellaneous",
+            "name": "Miscellaneous",
+            "description": "Uncategorized content",
+            "keywords": [],
+            "item_count": 5,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-15T10:30:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.keywords == []
+
+    def test_from_dict_handles_zero_item_count(self):
+        """from_dict should correctly handle item_count of zero."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "new-theme",
+            "name": "New Theme",
+            "description": "A newly created theme",
+            "keywords": ["new"],
+            "item_count": 0,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-15T10:30:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.item_count == 0
+
+    def test_roundtrip_to_dict_from_dict(self):
+        """Converting to_dict then from_dict should produce equivalent object."""
+        from src.library.models import Theme
+
+        original = Theme(
+            id="systems-thinking",
+            name="Systems Thinking",
+            description="Mental models for understanding complex systems",
+            keywords=["systems", "feedback", "complexity", "mental models"],
+            item_count=15,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            updated_at=datetime(2024, 1, 20, 14, 0, 0),
+        )
+
+        data = original.to_dict()
+        reconstructed = Theme.from_dict(data)
+
+        assert reconstructed.id == original.id
+        assert reconstructed.name == original.name
+        assert reconstructed.description == original.description
+        assert reconstructed.keywords == original.keywords
+        assert reconstructed.item_count == original.item_count
+        assert reconstructed.created_at == original.created_at
+        assert reconstructed.updated_at == original.updated_at
+
+    def test_from_dict_preserves_keywords_order(self):
+        """from_dict should preserve the order of keywords."""
+        from src.library.models import Theme
+
+        data = {
+            "id": "test-theme",
+            "name": "Test Theme",
+            "description": "A test theme",
+            "keywords": ["first", "second", "third", "fourth"],
+            "item_count": 0,
+            "created_at": "2024-01-15T10:30:00",
+            "updated_at": "2024-01-15T10:30:00",
+        }
+
+        result = Theme.from_dict(data)
+
+        assert result.keywords == ["first", "second", "third", "fourth"]
+        assert result.keywords[0] == "first"
+        assert result.keywords[-1] == "fourth"
+
+
+class TestThemeAssignment:
+    """Tests for the ThemeAssignment dataclass."""
+
+    def test_theme_assignment_has_required_fields(self):
+        """ThemeAssignment should have all required fields."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.85,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert assignment.item_id == "item-123"
+        assert assignment.theme_id == "systems-thinking"
+        assert assignment.confidence == 0.85
+        assert assignment.assigned_at == datetime(2024, 1, 15, 10, 30, 0)
+
+    def test_theme_assignment_item_id_is_string(self):
+        """ThemeAssignment item_id should be a string."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-abc-123",
+            theme_id="personal-growth",
+            confidence=0.7,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert isinstance(assignment.item_id, str)
+
+    def test_theme_assignment_theme_id_is_string(self):
+        """ThemeAssignment theme_id should be a string."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="personal-growth",
+            confidence=0.7,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert isinstance(assignment.theme_id, str)
+
+    def test_theme_assignment_confidence_is_float(self):
+        """ThemeAssignment confidence should be a float."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.95,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert isinstance(assignment.confidence, float)
+
+    def test_theme_assignment_confidence_can_be_zero(self):
+        """ThemeAssignment confidence can be 0.0 (minimum)."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="miscellaneous",
+            confidence=0.0,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert assignment.confidence == 0.0
+
+    def test_theme_assignment_confidence_can_be_one(self):
+        """ThemeAssignment confidence can be 1.0 (maximum)."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="perfect-match",
+            confidence=1.0,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert assignment.confidence == 1.0
+
+    def test_theme_assignment_confidence_can_be_fractional(self):
+        """ThemeAssignment confidence should support fractional values."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="test-theme",
+            confidence=0.333,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        assert assignment.confidence == 0.333
+
+    def test_theme_assignment_assigned_at_is_datetime(self):
+        """ThemeAssignment assigned_at should be a datetime."""
+        from src.library.models import ThemeAssignment
+
+        now = datetime(2024, 1, 15, 10, 30, 0)
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="test-theme",
+            confidence=0.5,
+            assigned_at=now,
+        )
+
+        assert isinstance(assignment.assigned_at, datetime)
+        assert assignment.assigned_at == now
+
+    def test_theme_assignment_is_dataclass(self):
+        """ThemeAssignment should be a dataclass."""
+        from dataclasses import is_dataclass
+        from src.library.models import ThemeAssignment
+
+        assert is_dataclass(ThemeAssignment)
+
+
+class TestThemeAssignmentSerialization:
+    """Tests for ThemeAssignment serialization methods (to_dict and from_dict)."""
+
+    def test_to_dict_returns_dictionary(self):
+        """to_dict should return a dictionary."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.85,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+        assert isinstance(result, dict)
+
+    def test_to_dict_serializes_all_fields(self):
+        """to_dict should include all ThemeAssignment fields."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.85,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+
+        assert result["item_id"] == "item-123"
+        assert result["theme_id"] == "systems-thinking"
+        assert result["confidence"] == 0.85
+
+    def test_to_dict_serializes_assigned_at_as_iso_string(self):
+        """to_dict should convert assigned_at datetime to ISO format string."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="test-theme",
+            confidence=0.5,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+
+        assert result["assigned_at"] == "2024-01-15T10:30:00"
+        assert isinstance(result["assigned_at"], str)
+
+    def test_to_dict_preserves_zero_confidence(self):
+        """to_dict should preserve confidence of zero."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="miscellaneous",
+            confidence=0.0,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+
+        assert result["confidence"] == 0.0
+
+    def test_to_dict_preserves_one_confidence(self):
+        """to_dict should preserve confidence of 1.0."""
+        from src.library.models import ThemeAssignment
+
+        assignment = ThemeAssignment(
+            item_id="item-123",
+            theme_id="perfect-match",
+            confidence=1.0,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        result = assignment.to_dict()
+
+        assert result["confidence"] == 1.0
+
+    def test_from_dict_returns_theme_assignment(self):
+        """from_dict should return a ThemeAssignment instance."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "systems-thinking",
+            "confidence": 0.85,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert isinstance(result, ThemeAssignment)
+
+    def test_from_dict_deserializes_all_fields(self):
+        """from_dict should correctly set all ThemeAssignment fields."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "systems-thinking",
+            "confidence": 0.85,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.item_id == "item-123"
+        assert result.theme_id == "systems-thinking"
+        assert result.confidence == 0.85
+
+    def test_from_dict_deserializes_assigned_at_from_iso_string(self):
+        """from_dict should convert assigned_at ISO string to datetime."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "test-theme",
+            "confidence": 0.5,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.assigned_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert isinstance(result.assigned_at, datetime)
+
+    def test_from_dict_handles_zero_confidence(self):
+        """from_dict should correctly handle confidence of zero."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "miscellaneous",
+            "confidence": 0.0,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.confidence == 0.0
+
+    def test_from_dict_handles_one_confidence(self):
+        """from_dict should correctly handle confidence of 1.0."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "perfect-match",
+            "confidence": 1.0,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.confidence == 1.0
+
+    def test_roundtrip_to_dict_from_dict(self):
+        """Converting to_dict then from_dict should produce equivalent object."""
+        from src.library.models import ThemeAssignment
+
+        original = ThemeAssignment(
+            item_id="item-123",
+            theme_id="systems-thinking",
+            confidence=0.85,
+            assigned_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+
+        data = original.to_dict()
+        reconstructed = ThemeAssignment.from_dict(data)
+
+        assert reconstructed.item_id == original.item_id
+        assert reconstructed.theme_id == original.theme_id
+        assert reconstructed.confidence == original.confidence
+        assert reconstructed.assigned_at == original.assigned_at
+
+    def test_from_dict_handles_fractional_confidence(self):
+        """from_dict should correctly handle fractional confidence values."""
+        from src.library.models import ThemeAssignment
+
+        data = {
+            "item_id": "item-123",
+            "theme_id": "test-theme",
+            "confidence": 0.333,
+            "assigned_at": "2024-01-15T10:30:00",
+        }
+
+        result = ThemeAssignment.from_dict(data)
+
+        assert result.confidence == 0.333

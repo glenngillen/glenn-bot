@@ -147,3 +147,93 @@ def sample_quote_data():
         "importance": 9,
         "projects": ["personal_brand"]
     }
+
+
+# Library module fixtures
+
+@pytest.fixture
+def sample_chromadb_document():
+    """Sample ChromaDB document as returned by KnowledgeBase.export_knowledge()."""
+    return {
+        "id": "doc_123",
+        "content": "Systems thinking is a holistic approach to analysis that focuses on the way a system's constituent parts interrelate.",
+        "metadata": {
+            "type": "framework",
+            "name": "Systems Thinking Framework",
+            "source": "https://example.com/systems-thinking",
+            "category": "mental_models"
+        },
+        "embedding": [0.1] * 768
+    }
+
+
+@pytest.fixture
+def sample_library_item_data():
+    """Sample LibraryItem data for testing."""
+    return {
+        "id": "doc_123",
+        "content_type": "framework",
+        "title": "Systems Thinking Framework",
+        "summary": "Systems thinking is a holistic approach to analysis that focuses on the way a system's constituent parts interrelate.",
+        "full_content": "Systems thinking is a holistic approach to analysis that focuses on the way a system's constituent parts interrelate. It emphasizes feedback loops, emergence, and interconnectedness.",
+        "source_url": "https://example.com/systems-thinking",
+        "cover_image_url": None,
+        "metadata": {
+            "category": "mental_models"
+        },
+        "themes": ["systems-thinking", "mental-models"],
+        "created_at": "2024-01-15T10:30:00",
+        "highlights": [
+            "Focus on feedback loops and interconnections",
+            "Consider the whole rather than individual parts"
+        ]
+    }
+
+
+@pytest.fixture
+def sample_theme_data():
+    """Sample Theme data for testing."""
+    return {
+        "id": "systems-thinking",
+        "name": "Systems Thinking",
+        "description": "Content related to understanding complex systems, feedback loops, and emergent behavior.",
+        "keywords": ["systems", "feedback", "complexity", "emergence", "holistic"],
+        "item_count": 5,
+        "created_at": "2024-01-15T10:00:00",
+        "updated_at": "2024-01-20T14:30:00"
+    }
+
+
+@pytest.fixture
+def sample_theme_assignment_data():
+    """Sample ThemeAssignment data for testing."""
+    return {
+        "item_id": "doc_123",
+        "theme_id": "systems-thinking",
+        "confidence": 0.85,
+        "assigned_at": "2024-01-15T10:30:00"
+    }
+
+
+@pytest.fixture
+def mock_library_settings(temp_dir):
+    """Create mock settings with library directories."""
+    mock = MagicMock()
+    mock.library_data_dir = temp_dir / "library"
+    mock.library_site_dir = temp_dir / "library-site"
+    mock.library_server_port = 8080
+
+    # Also include standard settings
+    mock.conversation_history_dir = temp_dir / "conversations"
+    mock.chroma_persist_directory = temp_dir / "chroma"
+    mock.chroma_collection_name = "test_collection"
+    mock.knowledge_dir = temp_dir / "knowledge"
+    mock.ollama_host = "http://localhost:11434"
+    mock.ollama_model = "llama3:8b"
+    mock.ollama_embedding_model = "nomic-embed-text"
+
+    # Create library directories
+    mock.library_data_dir.mkdir(parents=True, exist_ok=True)
+    mock.library_site_dir.mkdir(parents=True, exist_ok=True)
+
+    return mock

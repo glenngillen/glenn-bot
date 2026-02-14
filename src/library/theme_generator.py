@@ -1,0 +1,789 @@
+"""Theme generator module for AI-powered thematic categorization.
+
+This module provides the ThemeGenerator class which uses AI (via OllamaClient)
+to automatically generate broad thematic categories that group related content
+across all content types in the knowledge library.
+
+Themes are persisted to disk and can be updated incrementally as new content
+is added to the knowledge base.
+"""
+
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Union
+
+from src.library.models import LibraryItem, Theme, ThemeAssignment
+
+if TYPE_CHECKING:
+    from src.ollama_client import OllamaClient
+
+
+class ThemeGenerator:
+    """AI-powered theme generator for the knowledge library.
+
+    Uses OllamaClient to analyze content and generate thematic categories
+    that group related items. Themes and assignments are persisted to JSON
+    files in the data directory.
+
+    Attributes:
+        ollama_client: The OllamaClient instance for AI generation.
+        data_dir: Path to the data directory for persistence.
+        themes_file: Path to the themes.json file.
+        assignments_file: Path to the assignments.json file.
+        themes: List of Theme objects.
+        assignments: List of ThemeAssignment objects.
+    """
+
+    def __init__(
+        self,
+        ollama_client: "OllamaClient",
+        data_dir: Union[str, Path],
+    ) -> None:
+        """Initialize the ThemeGenerator.
+
+        Args:
+            ollama_client: The OllamaClient instance to use for AI generation.
+            data_dir: Path to the data directory for storing themes and
+                assignments. Will be created if it doesn't exist.
+        """
+        self.ollama_client = ollama_client
+        self.data_dir = Path(data_dir) if isinstance(data_dir, str) else data_dir
+
+        # Create data directory if it doesn't exist
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+
+        # File paths for persistence
+        self.themes_file = self.data_dir / "themes.json"
+        self.assignments_file = self.data_dir / "assignments.json"
+
+        # Initialize empty lists for themes and assignments
+        self.themes: list[Theme] = []
+        self.assignments: list[ThemeAssignment] = []
+
+    def save_themes(self) -> None:
+        """Save themes to themes.json file in the data directory.
+
+        Serializes all themes in self.themes to JSON format and writes
+        them to the themes.json file. Uses indentation for human-readable
+        output. Overwrites any existing file.
+        """
+        themes_data = [theme.to_dict() for theme in self.themes]
+        with open(self.themes_file, "w") as f:
+            json.dump(themes_data, f, indent=2)
+
+    def load_themes(self) -> list[Theme]:
+        """Load themes from themes.json file in the data directory.
+
+        Reads the themes.json file and parses it into Theme objects.
+        Replaces any existing themes in self.themes with the loaded data.
+
+        Returns:
+            List of Theme objects loaded from the file. Returns empty list
+            if the file doesn't exist or is empty.
+        """
+        if not self.themes_file.exists():
+            self.themes = []
+            return self.themes
+
+        with open(self.themes_file) as f:
+            themes_data = json.load(f)
+
+        self.themes = [Theme.from_dict(data) for data in themes_data]
+        return self.themes
+
+    def save_assignments(self) -> None:
+        """Save assignments to assignments.json file in the data directory.
+
+        Serializes all assignments in self.assignments to JSON format and writes
+        them to the assignments.json file. Uses indentation for human-readable
+        output. Overwrites any existing file.
+        """
+        assignments_data = [assignment.to_dict() for assignment in self.assignments]
+        with open(self.assignments_file, "w") as f:
+            json.dump(assignments_data, f, indent=2)
+
+    def load_assignments(self) -> list[ThemeAssignment]:
+        """Load assignments from assignments.json file in the data directory.
+
+        Reads the assignments.json file and parses it into ThemeAssignment objects.
+        Replaces any existing assignments in self.assignments with the loaded data.
+
+        Returns:
+            List of ThemeAssignment objects loaded from the file. Returns empty list
+            if the file doesn't exist or is empty.
+        """
+        if not self.assignments_file.exists():
+            self.assignments = []
+            return self.assignments
+
+        with open(self.assignments_file) as f:
+            assignments_data = json.load(f)
+
+        self.assignments = [ThemeAssignment.from_dict(data) for data in assignments_data]
+        return self.assignments
+
+    def _build_theme_generation_prompt(self, items: list[LibraryItem]) -> str:
+        """Build the prompt for LLM theme generation.
+
+        Constructs a prompt that asks the LLM to analyze the provided content
+        and generate 5-10 broad thematic categories with id, name, description,
+        and keywords for each theme.
+
+        Args:
+            items: List of LibraryItem objects to analyze for theme generation.
+
+        Returns:
+            A string prompt for the LLM to generate themes in JSON format.
+        """
+        # Build the content summary section
+        if not items:
+            content_section = "No content items available for analysis."
+        else:
+            content_lines = []
+            for item in items:
+                content_type = item.content_type.value
+                content_lines.append(
+                    f"- [{content_type}] {item.title}: {item.summary}"
+                )
+            content_section = "\n".join(content_lines)
+
+        prompt = f"""Analyze the following knowledge base content and identify 5 to 10 broad thematic categories that group related items together.
+
+Content to analyze:
+{content_section}
+
+For each theme, provide:
+- id: A URL-friendly slug (lowercase, hyphens instead of spaces, e.g., "personal-growth")
+- name: A human-readable name for the theme
+- description: A brief description of what this theme encompasses
+- keywords: A list of representative keywords for this theme
+
+Return your response as a JSON array of theme objects. Example format:
+```json
+[
+  {{
+    "id": "personal-growth",
+    "name": "Personal Growth",
+    "description": "Self-improvement, habits, and learning strategies",
+    "keywords": ["growth", "habits", "learning", "self-improvement"]
+  }}
+]
+```
+
+Important:
+- Create between 5 and 10 themes based on the content diversity
+- Themes should be broad enough to group multiple items
+- Each theme should have 3-6 relevant keywords
+- Return only the JSON array, no additional text"""
+
+        return prompt
+
+    def _parse_themes_from_response(self, response: str) -> list[Theme]:
+        """Parse LLM response into Theme objects.
+
+        Extracts JSON from the LLM response (handling markdown code blocks
+        and preamble text), parses it, and converts each theme object into
+        a Theme dataclass instance.
+
+        Args:
+            response: The raw LLM response string, potentially containing
+                JSON wrapped in markdown code blocks or with preamble text.
+
+        Returns:
+            List of Theme objects parsed from the response. Returns empty
+            list if parsing fails or no valid themes are found.
+        """
+        if not response or not response.strip():
+            return []
+
+        # Try to extract JSON from markdown code blocks
+        json_str = self._extract_json_from_response(response)
+        if not json_str:
+            return []
+
+        try:
+            themes_data = json.loads(json_str)
+        except json.JSONDecodeError:
+            return []
+
+        if not isinstance(themes_data, list):
+            return []
+
+        themes = []
+        now = datetime.now()
+
+        for theme_data in themes_data:
+            # Skip themes missing required fields
+            if not isinstance(theme_data, dict):
+                continue
+            if "id" not in theme_data or "name" not in theme_data:
+                continue
+
+            theme = Theme(
+                id=theme_data["id"],
+                name=theme_data["name"],
+                description=theme_data.get("description", ""),
+                keywords=theme_data.get("keywords", []),
+                item_count=0,
+                created_at=now,
+                updated_at=now,
+            )
+            themes.append(theme)
+
+        return themes
+
+    def _extract_json_from_response(self, response: str) -> str | None:
+        """Extract JSON array from LLM response.
+
+        Handles responses with markdown code blocks (```json or ```)
+        and extracts the JSON content. Falls back to finding the first
+        [ and last ] in the response if no code blocks are found.
+
+        Args:
+            response: The raw LLM response string.
+
+        Returns:
+            The extracted JSON string, or None if no valid JSON found.
+        """
+        # Try to extract from markdown code blocks first
+        # Handle ```json ... ``` or ``` ... ```
+        code_block_pattern = r"```(?:json)?\s*\n?(.*?)\n?```"
+        matches = re.findall(code_block_pattern, response, re.DOTALL)
+
+        if matches:
+            # Return the first code block that looks like a JSON array
+            for match in matches:
+                stripped = match.strip()
+                if stripped.startswith("["):
+                    return stripped
+
+        # Fall back to finding raw JSON array in the response
+        # Find the first [ and last ]
+        start_idx = response.find("[")
+        end_idx = response.rfind("]")
+
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            return response[start_idx : end_idx + 1]
+
+        return None
+
+    def _build_assignment_prompt(
+        self, items: list[LibraryItem], themes: list[Theme]
+    ) -> str:
+        """Build the prompt for LLM item-to-theme assignment.
+
+        Constructs a prompt that asks the LLM to assign each item to one or more
+        themes with confidence scores. The prompt includes all theme information
+        (id, name, description, keywords) and all item information (id, title,
+        summary, content type) to help the LLM make informed assignments.
+
+        Args:
+            items: List of LibraryItem objects to assign to themes.
+            themes: List of Theme objects representing available categories.
+
+        Returns:
+            A string prompt for the LLM to generate theme assignments in JSON format.
+        """
+        # Build the themes section
+        if not themes:
+            themes_section = "No themes available for assignment."
+        else:
+            theme_lines = []
+            for theme in themes:
+                keywords_str = ", ".join(theme.keywords) if theme.keywords else "none"
+                theme_lines.append(
+                    f"- ID: {theme.id}\n"
+                    f"  Name: {theme.name}\n"
+                    f"  Description: {theme.description}\n"
+                    f"  Keywords: {keywords_str}"
+                )
+            themes_section = "\n".join(theme_lines)
+
+        # Build the items section
+        if not items:
+            items_section = "No items to assign."
+        else:
+            item_lines = []
+            for item in items:
+                content_type = item.content_type.value
+                item_lines.append(
+                    f"- ID: {item.id}\n"
+                    f"  Title: {item.title}\n"
+                    f"  Type: {content_type}\n"
+                    f"  Summary: {item.summary}"
+                )
+            items_section = "\n".join(item_lines)
+
+        prompt = f"""Assign each of the following items to one or more themes. Items can belong to multiple themes if they fit well.
+
+Available Themes:
+{themes_section}
+
+Items to Assign:
+{items_section}
+
+For each item-theme pair, provide a confidence score between 0.0 and 1.0 indicating how well the item fits the theme:
+- 1.0: Perfect fit, item is clearly about this theme
+- 0.7-0.9: Strong fit, item is highly relevant to this theme
+- 0.4-0.6: Moderate fit, item has some relevance to this theme
+- 0.1-0.3: Weak fit, item has minimal relevance to this theme
+
+Return your response as a JSON array of assignment objects with the following format:
+```json
+[
+  {{
+    "item_id": "the-item-id",
+    "theme_id": "the-theme-id",
+    "confidence": 0.85
+  }}
+]
+```
+
+Important:
+- Assign each item to at least one theme
+- An item can be assigned to multiple themes if it fits well (confidence >= 0.4)
+- Use the exact item_id and theme_id values provided above
+- Confidence scores must be between 0.0 and 1.0
+- Return only the JSON array, no additional text"""
+
+        return prompt
+
+    def _parse_assignments_from_response(self, response: str) -> list[ThemeAssignment]:
+        """Parse LLM response into ThemeAssignment objects.
+
+        Extracts JSON from the LLM response (handling markdown code blocks
+        and preamble text), parses it, and converts each assignment object into
+        a ThemeAssignment dataclass instance.
+
+        Args:
+            response: The raw LLM response string, potentially containing
+                JSON wrapped in markdown code blocks or with preamble text.
+
+        Returns:
+            List of ThemeAssignment objects parsed from the response. Returns
+            empty list if parsing fails or no valid assignments are found.
+        """
+        if not response or not response.strip():
+            return []
+
+        # Try to extract JSON from markdown code blocks
+        json_str = self._extract_json_from_response(response)
+        if not json_str:
+            return []
+
+        try:
+            assignments_data = json.loads(json_str)
+        except json.JSONDecodeError:
+            return []
+
+        if not isinstance(assignments_data, list):
+            return []
+
+        assignments = []
+        now = datetime.now()
+
+        for assignment_data in assignments_data:
+            # Skip non-dict entries
+            if not isinstance(assignment_data, dict):
+                continue
+            # Skip assignments missing required fields
+            if "item_id" not in assignment_data:
+                continue
+            if "theme_id" not in assignment_data:
+                continue
+            if "confidence" not in assignment_data:
+                continue
+
+            assignment = ThemeAssignment(
+                item_id=assignment_data["item_id"],
+                theme_id=assignment_data["theme_id"],
+                confidence=float(assignment_data["confidence"]),
+                assigned_at=now,
+            )
+            assignments.append(assignment)
+
+        return assignments
+
+    def generate_themes(self, items: list[LibraryItem]) -> list[Theme]:
+        """Generate themes from library items using AI.
+
+        Orchestrates the theme generation process by:
+        1. Building a prompt from the provided items
+        2. Calling OllamaClient.generate() to get AI-generated themes
+        3. Parsing the response into Theme objects
+        4. Saving the themes to disk
+        5. Updating self.themes with the generated themes
+
+        Args:
+            items: List of LibraryItem objects to analyze for theme generation.
+
+        Returns:
+            List of Theme objects generated from the content. Returns empty
+            list if generation fails or no themes could be parsed.
+        """
+        # Build the prompt from items
+        prompt = self._build_theme_generation_prompt(items)
+
+        # Call OllamaClient to generate themes
+        system_prompt = (
+            "You are a knowledge organization expert. Analyze content and identify "
+            "thematic categories. Always respond with valid JSON arrays only."
+        )
+        response = self.ollama_client.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+        )
+
+        # Parse the response into Theme objects
+        themes = self._parse_themes_from_response(response)
+
+        # Update self.themes and save to disk
+        self.themes = themes
+        self.save_themes()
+
+        return themes
+
+    def assign_items_to_themes(
+        self, items: list[LibraryItem]
+    ) -> list[ThemeAssignment]:
+        """Assign library items to themes using AI.
+
+        Orchestrates the item-to-theme assignment process by:
+        1. Building a prompt from the provided items and themes
+        2. Calling OllamaClient.generate() to get AI-generated assignments
+        3. Parsing the response into ThemeAssignment objects
+        4. Saving the assignments to disk
+        5. Updating self.assignments with the new assignments
+
+        Each item can be assigned to multiple themes with confidence scores
+        indicating how well the item fits each theme.
+
+        Args:
+            items: List of LibraryItem objects to assign to themes.
+
+        Returns:
+            List of ThemeAssignment objects. Returns empty list if:
+            - No items are provided
+            - No themes exist (self.themes is empty)
+            - The LLM returns an invalid response
+        """
+        # Return empty list for edge cases
+        if not items:
+            return []
+        if not self.themes:
+            return []
+
+        # Build the prompt from items and themes
+        prompt = self._build_assignment_prompt(items, self.themes)
+
+        # Call OllamaClient to generate assignments
+        system_prompt = (
+            "You are a knowledge organization expert. Assign content items to "
+            "thematic categories with appropriate confidence scores. "
+            "Always respond with valid JSON arrays only."
+        )
+        response = self.ollama_client.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+        )
+
+        # Parse the response into ThemeAssignment objects
+        assignments = self._parse_assignments_from_response(response)
+
+        # Update self.assignments and save to disk
+        self.assignments = assignments
+        self.save_assignments()
+
+        return assignments
+
+    def update_assignments(
+        self, items: list[LibraryItem]
+    ) -> list[ThemeAssignment]:
+        """Update theme assignments for new items only (incremental update).
+
+        Identifies items that don't have existing assignments and assigns only
+        those to themes. Existing assignments are preserved. This is more
+        efficient than assign_items_to_themes() when adding new content to
+        an existing library.
+
+        The process:
+        1. Identify items without existing assignments
+        2. If no new items, return empty list without calling LLM
+        3. Call LLM to assign only new items to themes
+        4. Combine new assignments with existing ones
+        5. Save all assignments to disk
+
+        Args:
+            items: List of LibraryItem objects (both existing and new).
+
+        Returns:
+            List of ThemeAssignment objects for newly assigned items only.
+            Returns empty list if:
+            - No items are provided
+            - No themes exist (self.themes is empty)
+            - All items already have assignments
+        """
+        # Return empty list for edge cases
+        if not items:
+            return []
+        if not self.themes:
+            return []
+
+        # Find items that don't have existing assignments
+        assigned_item_ids = {a.item_id for a in self.assignments}
+        new_items = [item for item in items if item.id not in assigned_item_ids]
+
+        # If all items already have assignments, return empty list
+        if not new_items:
+            return []
+
+        # Build the prompt for only the new items
+        prompt = self._build_assignment_prompt(new_items, self.themes)
+
+        # Call OllamaClient to generate assignments
+        system_prompt = (
+            "You are a knowledge organization expert. Assign content items to "
+            "thematic categories with appropriate confidence scores. "
+            "Always respond with valid JSON arrays only."
+        )
+        response = self.ollama_client.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+        )
+
+        # Parse the response into ThemeAssignment objects
+        new_assignments = self._parse_assignments_from_response(response)
+
+        # Combine existing assignments with new assignments
+        self.assignments = list(self.assignments) + new_assignments
+        self.save_assignments()
+
+        return new_assignments
+
+    def ensure_miscellaneous_theme(self) -> Theme:
+        """Ensure a Miscellaneous theme exists for catch-all assignments.
+
+        If a theme with id "miscellaneous" already exists in self.themes,
+        returns that theme. Otherwise, creates a new Miscellaneous theme
+        with appropriate properties and adds it to self.themes.
+
+        The Miscellaneous theme serves as a catch-all category for items
+        that don't fit well into any of the generated themes (i.e., items
+        with max confidence < 0.3 across all theme assignments).
+
+        Returns:
+            The Miscellaneous Theme object (either existing or newly created).
+        """
+        # Check if Miscellaneous theme already exists
+        for theme in self.themes:
+            if theme.id == "miscellaneous":
+                return theme
+
+        # Create new Miscellaneous theme
+        now = datetime.now()
+        misc_theme = Theme(
+            id="miscellaneous",
+            name="Miscellaneous",
+            description="Catch-all category for uncategorized items",
+            keywords=["misc", "other", "uncategorized"],
+            item_count=0,
+            created_at=now,
+            updated_at=now,
+        )
+
+        # Add to themes list
+        self.themes.append(misc_theme)
+
+        return misc_theme
+
+    def apply_miscellaneous_fallback(
+        self, items: list[LibraryItem]
+    ) -> list[ThemeAssignment]:
+        """Apply Miscellaneous fallback for items with low confidence assignments.
+
+        Items that don't fit any theme well (max confidence < 0.3 across all
+        their assignments) are automatically assigned to the Miscellaneous
+        theme. Items with no assignments at all are also assigned to
+        Miscellaneous.
+
+        This method:
+        1. Ensures the Miscellaneous theme exists
+        2. Identifies items needing the fallback (max confidence < 0.3 or no assignments)
+        3. Skips items already assigned to Miscellaneous
+        4. Creates new ThemeAssignment objects with a low confidence score
+        5. Adds the new assignments to self.assignments
+
+        Args:
+            items: List of LibraryItem objects to check for fallback assignment.
+
+        Returns:
+            List of new ThemeAssignment objects created for the Miscellaneous
+            theme. Returns empty list if no items need fallback assignment.
+        """
+        # Handle empty items list
+        if not items:
+            return []
+
+        # Ensure Miscellaneous theme exists
+        self.ensure_miscellaneous_theme()
+
+        # Find items that need Miscellaneous assignment
+        new_assignments = []
+        now = datetime.now()
+
+        # Confidence threshold for fallback
+        threshold = 0.3
+
+        for item in items:
+            # Get all assignments for this item
+            item_assignments = [a for a in self.assignments if a.item_id == item.id]
+
+            # Skip if item already has a Miscellaneous assignment
+            if any(a.theme_id == "miscellaneous" for a in item_assignments):
+                continue
+
+            # Check if item needs fallback:
+            # - No assignments at all, OR
+            # - All assignments have confidence < threshold
+            needs_fallback = False
+
+            if not item_assignments:
+                # No assignments at all
+                needs_fallback = True
+            else:
+                # Check max confidence across all assignments
+                max_confidence = max(a.confidence for a in item_assignments)
+                if max_confidence < threshold:
+                    needs_fallback = True
+
+            if needs_fallback:
+                # Create Miscellaneous assignment with low confidence
+                # Use 0.1 to indicate it's a fallback, not a strong match
+                assignment = ThemeAssignment(
+                    item_id=item.id,
+                    theme_id="miscellaneous",
+                    confidence=0.1,
+                    assigned_at=now,
+                )
+                new_assignments.append(assignment)
+                # Also add to self.assignments
+                self.assignments.append(assignment)
+
+        return new_assignments
+
+    def ensure_minimum_themes(self, minimum: int = 3) -> list[Theme]:
+        """Ensure at least the minimum number of themes exist.
+
+        If the current number of themes is less than the minimum, this method
+        adds default themes to reach the minimum count. This is useful for
+        small knowledge bases where the LLM might not generate enough themes.
+
+        The default themes added are:
+        - "General" - General content and resources
+        - "Reference" - Reference materials and documentation
+        - "Ideas" - Ideas, thoughts, and notes
+
+        These provide broad categories that can accommodate any content type.
+
+        Args:
+            minimum: The minimum number of themes required. Defaults to 3.
+
+        Returns:
+            The list of themes after ensuring the minimum count.
+        """
+        # Define default themes to use as fallbacks
+        default_themes_data = [
+            {
+                "id": "general",
+                "name": "General",
+                "description": "General content and resources",
+                "keywords": ["general", "content", "resources"],
+            },
+            {
+                "id": "reference",
+                "name": "Reference",
+                "description": "Reference materials and documentation",
+                "keywords": ["reference", "documentation", "materials"],
+            },
+            {
+                "id": "ideas",
+                "name": "Ideas",
+                "description": "Ideas, thoughts, and notes",
+                "keywords": ["ideas", "thoughts", "notes"],
+            },
+        ]
+
+        # Check if we need to add themes
+        if len(self.themes) >= minimum:
+            return self.themes
+
+        # Get existing theme IDs to avoid duplicates
+        existing_ids = {theme.id for theme in self.themes}
+
+        # Add default themes until we reach the minimum
+        now = datetime.now()
+        for theme_data in default_themes_data:
+            if len(self.themes) >= minimum:
+                break
+
+            # Skip if this theme ID already exists
+            if theme_data["id"] in existing_ids:
+                continue
+
+            theme = Theme(
+                id=theme_data["id"],
+                name=theme_data["name"],
+                description=theme_data["description"],
+                keywords=theme_data["keywords"],
+                item_count=0,
+                created_at=now,
+                updated_at=now,
+            )
+            self.themes.append(theme)
+            existing_ids.add(theme_data["id"])
+
+        return self.themes
+
+    def get_items_for_theme(
+        self, theme_id: str, items: list[LibraryItem]
+    ) -> list[LibraryItem]:
+        """Get all items assigned to a specific theme.
+
+        Returns the LibraryItem objects from the provided items list that have
+        been assigned to the specified theme. Items are returned in the order
+        they appear in the input items list.
+
+        Args:
+            theme_id: The ID of the theme to get items for.
+            items: List of LibraryItem objects to filter.
+
+        Returns:
+            List of LibraryItem objects assigned to the theme. Returns empty
+            list if:
+            - The items list is empty
+            - No assignments exist for the theme
+            - No items in the items list are assigned to the theme
+        """
+        if not items:
+            return []
+
+        # Get the set of item IDs assigned to this theme
+        assigned_item_ids = {
+            a.item_id for a in self.assignments if a.theme_id == theme_id
+        }
+
+        if not assigned_item_ids:
+            return []
+
+        # Build a lookup map for provided items
+        items_map = {item.id: item for item in items}
+
+        # Return items that are both assigned to the theme AND in the provided list
+        # Preserve the order from the original items list
+        result = [
+            item for item in items if item.id in assigned_item_ids
+        ]
+
+        return result

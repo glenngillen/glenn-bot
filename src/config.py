@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     log_level: str = "WARNING"
     conversation_history_dir: Path = Path("./data/conversations")
     knowledge_dir: Path = Path("./knowledge")
+
+    # Library settings
+    library_data_dir: Path = Path("./data/library")
+    library_site_dir: Path = Path("./data/library-site")
+    library_server_port: int = 8080
     
     class Config:
         env_file = ".env"

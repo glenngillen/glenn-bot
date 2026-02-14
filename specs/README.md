@@ -31,6 +31,16 @@ User Input → Terminal UI → GlennBot Orchestrator
                          Reviewer Agent
                                 ↓
                        Response + Learning
+
+Library Build Pipeline (parallel system):
+
+Knowledge Base → Content Exporter → Cover Resolver → Theme Generator
+                                                            ↓
+                                                    Search Indexer
+                                                            ↓
+                                                   Static Generator
+                                                            ↓
+                                                    Library Server
 ```
 
 ## Technology Stack
@@ -57,6 +67,7 @@ User Input → Terminal UI → GlennBot Orchestrator
 | [QUOTES.md](./QUOTES.md) | Inspirational quotes management | Stable |
 | [TERMINAL-UI.md](./TERMINAL-UI.md) | Rich terminal interface | Stable |
 | [COMMANDS.md](./COMMANDS.md) | Available slash commands reference | Stable |
+| [LIBRARY.md](./LIBRARY.md) | Browsable static HTML library with AI themes | Stable |
 
 ## Key Files
 
@@ -75,6 +86,12 @@ User Input → Terminal UI → GlennBot Orchestrator
 | `src/terminal_ui.py` | Terminal UI components |
 | `src/ollama_client.py` | Ollama LLM interface |
 | `src/config.py` | Settings management |
+| `src/library/builder.py` | Library build orchestration |
+| `src/library/content_exporter.py` | ChromaDB to LibraryItem export |
+| `src/library/theme_generator.py` | AI-powered theme generation |
+| `src/library/cover_resolver.py` | Book cover image resolution |
+| `src/library/static_generator.py` | HTML site generation |
+| `src/library/server.py` | Local HTTP server |
 
 ## Data Directories
 
@@ -86,6 +103,8 @@ User Input → Terminal UI → GlennBot Orchestrator
 | `data/memory/contexts/` | Context definitions |
 | `data/quotes/` | Quotes database |
 | `data/feedback/` | User feedback records |
+| `data/library/` | Library metadata (themes, assignments, cover cache) |
+| `data/library-site/` | Generated static HTML site |
 | `knowledge/` | User-defined values, preferences, frameworks |
 
 ## Running the Project

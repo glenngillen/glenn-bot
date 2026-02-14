@@ -39,4 +39,6 @@ logs/
 # Temporary files
 *.tmp
 *.temp.worktrees/*
+
 .synapse-*.md
+.worktrees

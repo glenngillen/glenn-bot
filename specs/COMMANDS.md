@@ -84,6 +84,16 @@ Glenn-bot provides slash commands for managing conversations, contexts, knowledg
 | `/worst-responses` | View lowest-rated for improvement |
 | `/feedback-insights` | Get insights from feedback |
 
+### Library
+
+| Command | Description |
+|---------|-------------|
+| `/build-library` | Build static HTML library from knowledge base |
+| `/build-library --serve` | Build and start local HTTP server |
+| `/build-library --force` | Force regenerate all content (ignore cache) |
+| `/serve-library` | Start HTTP server for existing library site |
+| `/library-status` | Show library build statistics and status |
+
 ## Behavior
 
 ### Command Parsing
@@ -153,3 +163,6 @@ All command handling is in `src/main.py`:
 | `_show_auto_context_status()` | Auto-context settings |
 | `_set_auto_context()` | Enable/disable auto-context |
 | `_set_auto_context_threshold()` | Adjust threshold |
+| `_build_library()` | Library build orchestration |
+| `_serve_library()` | Start library HTTP server |
+| `_show_library_status()` | Library statistics |
