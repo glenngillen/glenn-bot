@@ -1,0 +1,13 @@
+---
+id: glenn-bot-0qg
+title: Create browsable library of knowledge
+status: open
+type: task
+priority: 2
+created_at: 2026-01-25T03:35:13Z
+updated_at: 2026-01-26T15:46:58Z
+closed_at: ~
+close_reason: ~
+external_ref: gh-22
+---
+Use https://trails.pieterma.es/ as a point of inspiration. I want a web interface that allows me to browse all of the knowledge I've accumulated. It should be able to display covers of relevant content (e.g., books) like the example linked. It should group similar content, even if that results in some content existing in multiple groups. It should also provide a means of browsing the whole library ungrouped. It should include all forms of content we've stored in the knowledge base.
