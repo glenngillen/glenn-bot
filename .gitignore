@@ -42,3 +42,10 @@ logs/
 
 .synapse-*.md
 .worktrees
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
+.synapse/catalog.db
+.synapse/catalog.db-shm
+.synapse/catalog.db-wal
